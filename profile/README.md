@@ -1,7 +1,9 @@
 # Hello Developers in this Organization 👋
 
 ## 🧙 What is your organization all about?
-This organization is for GitHub trainings involving Git and GitHub, plus testing GitHub features.
+This organization is for:
+- Trainings involving Git and GitHub
+- Testing and playing around with GitHub features.
 
 ## Available Workflow Templates
 
