@@ -1,0 +1,19 @@
+{
+    "name": "Java Spring Boot CI/CD Pipeline",
+    "description": "Complete CI/CD pipeline for containerized Spring Boot applications with Azure Container Apps deployment",
+    "iconName": "java",
+    "categories": [
+        "Java",
+        "Spring Boot",
+        "Docker",
+        "Azure",
+        "CI/CD"
+    ],
+    "filePatterns": [
+        "pom.xml",
+        "*.java",
+        "Dockerfile",
+        "application.properties",
+        "application.yml"
+    ]
+}
