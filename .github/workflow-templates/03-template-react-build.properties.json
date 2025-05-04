@@ -1,0 +1,10 @@
+{
+    "name": "React Build and Deploy",
+    "description": "Build and deploy React applications to Azure Static Web Apps",
+    "iconName": "react",
+    "categories": [
+        "JavaScript",
+        "React",
+        "Azure"
+    ]
+}
