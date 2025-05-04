@@ -1,0 +1,16 @@
+{
+  "name": "Terraform Deployment Pipeline",
+  "description": "Azure infrastructure deployment using Terraform with state management and security checks",
+  "iconName": "terraform",
+  "categories": [
+      "Infrastructure",
+      "Terraform",
+      "Azure",
+      "IaC"
+  ],
+  "filePatterns": [
+      "*.tf",
+      "*.tfvars",
+      "backend.hcl"
+  ]
+}
