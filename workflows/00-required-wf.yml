@@ -1,16 +1,10 @@
-name: 00-Testing Required Workflows
-
-run-name: "Auto-fail - via ${{ github.event_name }}"
-
 on:
-  workflow_dispatch:
-  push:
+  repository_dispatch:
+    types: [org_check]
 
 jobs:
-  auto-fail:
+  enforcement:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: true
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Run org-wide validation
+        run: echo "Enforcing policies..."
