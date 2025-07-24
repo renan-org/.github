@@ -1,4 +1,6 @@
 # These owners will be the default owners for everything in
 # the repo. Unless a later match takes precedence
+# *admin-team.yml  @renan-org/admin-group 
+
 *       @renan-alm
-*admin-team.yml  @renan-org/admin-group 
+*.yml  @renan-org/admin-group 
