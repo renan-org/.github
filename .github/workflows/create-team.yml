@@ -25,7 +25,9 @@ jobs:
         
       - name: Comment on Issue regarding workflow processing
         run: |
-            gh issue comment ${{ github.event.issue.number }} --body "This issue is being processed by the Create Team workflow. Please wait for the results.\n\n🔗 [View workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})\n\n---"
+            ```
+                gh issue comment ${{ github.event.issue.number }} --body "This issue is being processed by the Create Team workflow. Please wait for the results.
+                🔗 [View workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
       - name: Parse issue body
         id: parse
@@ -61,9 +63,9 @@ jobs:
 
       - name: Comment on Issue regarding team creation
         run: |
-          gh issue comment ${{ github.event.issue.number }} --body "✅ Team ${{ env.TEAM_NAME }} has been created successfully in the organization.\n\n---"
+          gh issue comment ${{ github.event.issue.number }} --body "✅ Team ${{ env.TEAM_NAME }} has been created successfully in the organization."
 
       - name: Comment on Issue regarding workflow failure
         if: failure()
         run: |
-          gh issue comment ${{ github.event.issue.number }} --body "❌ The team ${{ env.TEAM_NAME }} could not be created. Check logs in the workflow run linked earlier.\n\n---"
+          gh issue comment ${{ github.event.issue.number }} --body "❌ The team ${{ env.TEAM_NAME }} could not be created. Check logs in the workflow run linked earlier."
