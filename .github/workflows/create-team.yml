@@ -18,10 +18,11 @@ jobs:
       - name: Checkout current repository (for Issue template)
         uses: actions/checkout@v5
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }} ## You need permissions to create Teams
 
       - name: Init gh cli
-        run: gh auth login --with-token <<< ${{ secrets.GITHUB_TOKEN }}
+        ## You may want to use a GH App here instead
+        run: gh auth login --with-token <<< ${{ secrets.ISSUE_OPS_TOKEN }}
         
       - name: Comment on Issue regarding workflow processing
         run: |
