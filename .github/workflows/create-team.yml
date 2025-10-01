@@ -26,7 +26,7 @@ jobs:
       - name: Comment on Issue regarding workflow processing
         run: |
             gh issue comment ${{ github.event.issue.number }} --body "This issue is being processed by the Create Team workflow. Please wait for the results. <br><br> 🔗 [View workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
-            
+
       - name: Parse issue body
         id: parse
         uses: stefanbuck/github-issue-parser@v3
@@ -52,12 +52,12 @@ jobs:
 
       - name: Ensure team DOES NOT exist in organization
         run: |
-          gh api orgs/renan-org/teams/${{ env.TEAM_NAME }} --silent && echo "❌ Team already exists!" && exit 1 || echo "✅ Team does not exist."
+          gh api orgs/renan-org/teams/${{ env.TEAM_NAME }} --silent && echo "❌ Team already exists!" && exit 1
 
       - name: Create team in organization
         ## You may want to reach to your IdP here instead OR define a mechanism to assign team sync with your IdP groups
         run: |
-            gh api orgs/renan-org/teams --silent -X POST -d '{"name":"${{ env.TEAM_NAME }}"}' && echo "🔄 Team being created ..."
+            gh api orgs/renan-org/teams --method POST --field name="${{ env.TEAM_NAME }}" --field privacy="closed" && echo "🔄 Team being created ..."
 
       - name: Comment on Issue regarding team creation
         run: |
