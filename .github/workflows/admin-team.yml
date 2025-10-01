@@ -1,4 +1,4 @@
-name: Admin Team Management
+name: Change Admin Team
 on:
   issues:
     types: [opened, reopened]

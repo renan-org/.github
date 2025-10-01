@@ -1,7 +1,7 @@
 ---
-name: Create Team Request
-description: Request to create a new team within the organization.
-title: "[ADMIN] Create team request"
+name: Create Repo
+description: Request to create a new repository within the organization.
+title: "[REPO] Create repo request"
 labels: ["${{ github.actor }}"]
 
 body:

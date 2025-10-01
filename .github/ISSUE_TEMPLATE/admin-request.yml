@@ -1,5 +1,5 @@
 ---
-name: Change Admin Team
+name: Decommissioned - Change Admin Team
 description: Request to add or remove a user from the admin team.
 title: "[ADMIN] Admin team modification request"
 labels: ["admin-request"]
