@@ -8,7 +8,7 @@ Welcome to our GitHub organization! This space is dedicated to sharing resources
 
 To create a new team within this organization, use the below button and watch the created Issue for updates.
 
-<a href="/.github/ISSUE_TEMPLATE/01-template-create-team.md">
+<a href="https://github.com/renan-org/.github/issues/new?template=request-team.yml">
     <img src="https://img.shields.io/badge/Create%20a%20New%20Team-4B9CD3?style=flat-square&logo=github" alt="Create a New Team" />
 </a>
 
@@ -16,7 +16,7 @@ To create a new team within this organization, use the below button and watch th
 
 To create a new repository within this organization, you will need to already have a Team. Use the below button to trigger a request. Mind watch the created Issue for updates.
 
-<a href="/.github/ISSUE_TEMPLATE/02-template-create-repo.md">
+<a href="https://github.com/renan-org/.github/issues/new?template=request-repo.yml">
     <img src="https://img.shields.io/badge/Create%20a%20New%20Repository-4B9CD3?style=flat-square&logo=github" alt="Create a New Repository" />
 </a>
 
