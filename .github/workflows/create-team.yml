@@ -21,7 +21,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Init gh cli
-        run: gh auth login --with-token <<< ${{ secrets.SUPER_TOKEN }}
+        run: gh auth login --with-token <<< ${{ secrets.GITHUB_TOKEN }}
         
       - name: Comment on Issue regarding workflow processing
         run: |
