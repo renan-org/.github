@@ -2,7 +2,8 @@
 name: Create Team
 description: Request to create a new team within the organization.
 title: "[TEAM] Create team"
-labels: ["${{ github.actor }}"]
+labels: [create-team]
+# assignees: ["maintainer1"] ## You may want to assign maintainers to triage these requests
 
 body:
   - type: markdown
