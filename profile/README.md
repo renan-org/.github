@@ -1,9 +1,24 @@
 # Hello Developers in this Organization 👋
 
-## 🧙 What is your organization all about?
-This organization is for:
-- Trainings involving Git and GitHub
-- Testing and playing around with GitHub features.
+Welcome to our GitHub organization! This space is dedicated to sharing resources, workflows, and other tools to streamline your development processes.
+
+## Automation resources ⚙️
+
+### Creating a Team in this Organization
+
+To create a new team within this organization, use the below button and watch the created Issue for updates.
+
+<a href="/.github/ISSUE_TEMPLATE/01-template-create-team.md">
+    <img src="https://img.shields.io/badge/Create%20a%20New%20Team-4B9CD3?style=flat-square&logo=github" alt="Create a New Team" />
+</a>
+
+### Creating a Repository in this Organization
+
+To create a new repository within this organization, you will need to already have a Team. Use the below button to trigger a request. Mind watch the created Issue for updates.
+
+<a href="/.github/ISSUE_TEMPLATE/02-template-create-repo.md">
+    <img src="https://img.shields.io/badge/Create%20a%20New%20Repository-4B9CD3?style=flat-square&logo=github" alt="Create a New Repository" />
+</a>
 
 ## Available Workflow Templates
 
