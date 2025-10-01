@@ -51,8 +51,14 @@ jobs:
           echo "Justification: ${{ env.JUSTIFICATION }}"
 
       - name: Ensure team DOES NOT exist in organization
+        id: check-team-existence
         run: |
-          gh api orgs/renan-org/teams/${{ env.TEAM_NAME }} --silent && echo "❌ Team already exists!" && exit 1
+            gh api orgs/renan-org/teams/${{ env.TEAM_NAME }} --silent && echo "❌ Team already exists!" && exit 1 || echo "✅ Team does not exist, proceeding ..."
+
+      - name: Comment on Issue if team already exists
+        if: always() && steps.check-team-existence.outcome == 'failure'
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body "❌ The team ${{ env.TEAM_NAME }} already exists in the organization. Please choose a different name."
 
       - name: Create team in organization
         ## You may want to reach to your IdP here instead OR define a mechanism to assign team sync with your IdP groups
