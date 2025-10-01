@@ -1,0 +1,69 @@
+name: Create Team Workflow
+on:
+  issues:
+    types: [opened, reopened]
+
+jobs:
+  manage-admin-team:
+    if: contains(github.event.issue.labels.*.name, 'create-team')
+    ### Make sure to manually create the label "create-team" in the organization
+    ### https://github.com/renan-org/.github/issues/labels
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: write
+      pull-requests: write
+    
+    steps:
+      - name: Checkout current repository (for Issue template)
+        uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Init gh cli
+        run: gh auth login --with-token <<< ${{ secrets.SUPER_TOKEN }}
+        
+      - name: Comment on Issue regarding workflow processing
+        run: |
+            gh issue comment ${{ github.event.issue.number }} --body "This issue is being processed by the Create Team workflow. Please wait for the results.\n\n🔗 [View workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})\n\n---"
+
+      - name: Parse issue body
+        id: parse
+        uses: stefanbuck/github-issue-parser@v3
+        with:
+          template-path: .github/ISSUE_TEMPLATE/request-team.yml
+          issue-body: "${{ github.event.issue.body }}"
+
+      - name: Save parsed output to file
+        id: gather-issue-inputs
+        run: echo '${{ steps.parse.outputs.jsonString }}' > migrate_output.json
+
+      - name: Export parsed values to environment variables
+        run: |
+          echo "TEAM_NAME=$(jq -r '.team_name' migrate_output.json)" >> $GITHUB_ENV
+          echo "ACTION=$(jq -r '.action_type' migrate_output.json)" >> $GITHUB_ENV
+          echo "JUSTIFICATION=$(jq -r '.justification' migrate_output.json)" >> $GITHUB_ENV
+
+      - name: "DEBUG:Show parsed data"
+        run: |
+          echo "Team to be created: ${{ env.TEAM_NAME }}"
+          echo "Action: ${{ env.ACTION }}"
+          echo "Justification: ${{ env.JUSTIFICATION }}"
+
+      - name: Ensure team DOES NOT exist in organization
+        run: |
+          gh api orgs/renan-org/teams/${{ env.TEAM_NAME }} --silent && echo "❌ Team already exists" && exit 1 || echo "✅ Team does not exist"
+
+      - name: Create team in organization
+        ## You may want to reach to your IdP here instead OR define a mechanism to assign team sync with your IdP groups
+        run: |
+            gh api orgs/renan-org/teams --silent -X POST -d '{"name":"${{ env.TEAM_NAME }}"}' && echo "✅ Team created successfully" || echo "❌ Failed to create team"
+
+      - name: Comment on Issue regarding team creation
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body "✅ Team ${{ env.TEAM_NAME }} has been created successfully in the organization.\n\n---"
+
+      - name: Comment on Issue regarding workflow failure
+        if: failure()
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body "❌ The team ${{ env.TEAM_NAME }} could not be created. Check logs in the workflow run linked earlier.\n\n---"

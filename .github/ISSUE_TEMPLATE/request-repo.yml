@@ -1,7 +1,7 @@
 ---
 name: Create Repo
 description: Request to create a new repository within the organization.
-title: "[REPO] Create repo request"
+title: "[REPO] Create repo"
 labels: ["${{ github.actor }}"]
 
 body:
