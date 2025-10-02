@@ -51,6 +51,53 @@ jobs:
           echo "Action: ${{ env.ACTION }}"
           echo "Justification: ${{ env.JUSTIFICATION }}"
 
+      - name: Validate team name conventions
+        id: validate-team-name
+        run: |
+          TEAM_NAME="${{ env.TEAM_NAME }}"
+          echo "Validating team name: $TEAM_NAME"
+          
+          # Check if team name is empty
+          if [ -z "$TEAM_NAME" ]; then
+            echo "❌ Team name cannot be empty"
+            exit 1
+          fi
+          
+          # Check length (GitHub teams: 1-100 characters)
+          if [ ${#TEAM_NAME} -gt 100 ]; then
+            echo "❌ Team name cannot be longer than 100 characters (current: ${#TEAM_NAME})"
+            exit 1
+          fi
+          
+          # Check for invalid characters (only alphanumeric, hyphens, underscores, periods)
+          if [[ ! "$TEAM_NAME" =~ ^[a-z0-9._-]+$ ]]; then
+            echo "❌ Team name can only contain lowercase letters, numbers, hyphens (-), underscores (_), and periods (.)"
+            exit 1
+          fi
+          
+          # Check if it starts or ends with special characters
+          if [[ "$TEAM_NAME" =~ ^[._-] ]] || [[ "$TEAM_NAME" =~ [._-]$ ]]; then
+            echo "❌ Team name cannot start or end with hyphens, underscores, or periods"
+            exit 1
+          fi
+          
+          # Check for consecutive special characters
+          if [[ "$TEAM_NAME" =~ [._-]{2,} ]]; then
+            echo "❌ Team name cannot contain consecutive hyphens, underscores, or periods"
+            exit 1
+          fi
+          
+          echo "✅ Team name validation passed"
+
+      - name: Comment on Issue if team name validation fails
+        if: always() && steps.validate-team-name.outcome == 'failure'
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body "❌ The team name '${{ env.TEAM_NAME }}' does not follow GitHub naming conventions. Team names must:
+          - Be 1-100 characters long
+          - Contain only lowercase letters, numbers, hyphens (-), underscores (_), and periods (.)
+          - Not start or end with special characters
+          - Not contain consecutive special characters"
+
       - name: Ensure team DOES NOT exist in organization
         id: check-team-existence
         run: |
