@@ -43,7 +43,7 @@ jobs:
         run: echo '${{ steps.parse.outputs.jsonString }}' > migrate_output.json
       - name: Export parsed values as environment variables
         run: |
-          echo "HANDLE=$(jq -r '.github_handle' migrate_output.json)" >> $GITHUB_ENV
+          echo "HANDLE=$(jq -r '.github_handle' migrate_output.json | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
           echo "ACTION=$(jq -r '.action_type' migrate_output.json)" >> $GITHUB_ENV
           echo "JUSTIFICATION=$(jq -r '.justification' migrate_output.json)" >> $GITHUB_ENV
 

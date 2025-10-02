@@ -2,28 +2,40 @@
 name: Create Repo
 description: Request to create a new repository within the organization.
 title: "[REPO] Create repo"
-labels: ["${{ github.actor }}"]
+labels: [create-repo]
+# assignees: ["maintainer1"] ## You may want to assign maintainers to triage these requests
 
 body:
   - type: markdown
     attributes:
       value: |
-        ## Automated Admin Team Management
+        ## Automated Repository Management
 
-        This request will be automatically processed by the [Admin Team Management workflow](../workflows/create-team.yml).
+        This request will be automatically processed by the [Create Repository workflow](../workflows/create-repo.yml).
 
         The workflow will:
-        1. Validate that the team does not exist in the organization.
-        2. Create a new team in the organization.
+        1. Validate that the repository does not exist in the organization.
+        2. Validate that the specified team exists in the organization.
+        3. Create a new repository in the organization.
+        4. Assign the specified team to the repository.
 
-        Remove functionality may be implemented. In that scenario, teams owning repositories CANNOT be deleted.
+        Remove functionality may be implemented.
         
+  - type: input
+    id: repo_name
+    attributes:
+      label: Repository Name
+      description: "Enter the name of the repository to create"
+      placeholder: "e.g., my-new-repo"
+    validations:
+      required: true
+
   - type: input
     id: team_name
     attributes:
       label: Team Name
-      description: "Enter the name of the team to create"
-      placeholder: "e.g., my-new-team"
+      description: "Enter the name of the team that will own this repository (team must exist)"
+      placeholder: "e.g., my-team"
     validations:
       required: true
 
@@ -44,6 +56,6 @@ body:
     attributes:
       label: Justification
       description: "Provide a brief justification for this request"
-      placeholder: "Please explain why this admin access change is needed..."
+      placeholder: "Please explain why this repository is needed..."
     validations:
       required: false

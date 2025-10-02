@@ -16,119 +16,86 @@ jobs:
     
     steps:
       - name: Checkout current repository (for Issue template)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Init gh cli
-        run: gh auth login --with-token <<< ${{ secrets.SUPER_TOKEN }}
+        ## You may want to use a GH App here instead
+        run: gh auth login --with-token <<< ${{ secrets.ISSUE_OPS_TOKEN }}
         
-      - name: Post workflow run on Issue
+      - name: Comment on Issue regarding workflow processing
         run: |
-          gh issue comment ${{ github.event.issue.number }} --body "This issue is being processed by the Admin Team Management workflow. Please wait for the results."
-
-      # - name: Checkout .github repository (for admin-team.yml)
-      #   uses: actions/checkout@v4
-      #   with:
-      #     token: ${{ secrets.SUPER_TOKEN }}
-      #     repository: ${{ github.repository_owner }}/.github
+            gh issue comment ${{ github.event.issue.number }} --body "This issue is being processed by the Create Repository workflow. Please wait for the results. <br><br> 🔗 [View workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
 
       - name: Parse issue body
         id: parse
         uses: stefanbuck/github-issue-parser@v3
         with:
-          template-path: .github/ISSUE_TEMPLATE/admin-request.yml
+          template-path: .github/ISSUE_TEMPLATE/request-repo.yml
           issue-body: "${{ github.event.issue.body }}"
 
       - name: Save parsed output to file
         id: gather-issue-inputs
         run: echo '${{ steps.parse.outputs.jsonString }}' > migrate_output.json
-      - name: Export parsed values as environment variables
+
+      - name: Export parsed values to environment variables
         run: |
-          echo "HANDLE=$(jq -r '.github_handle' migrate_output.json)" >> $GITHUB_ENV
+          echo "REPO_NAME=$(jq -r '.repo_name' migrate_output.json | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+          echo "TEAM_NAME=$(jq -r '.team_name' migrate_output.json | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
           echo "ACTION=$(jq -r '.action_type' migrate_output.json)" >> $GITHUB_ENV
           echo "JUSTIFICATION=$(jq -r '.justification' migrate_output.json)" >> $GITHUB_ENV
 
-      - name: Show parsed data
+      - name: "DEBUG - Show parsed data"
         run: |
-          echo "GitHub Handle: ${{ env.HANDLE }}"
+          echo "Repository to be created: ${{ env.REPO_NAME }}"
+          echo "Team to be assigned: ${{ env.TEAM_NAME }}"
           echo "Action: ${{ env.ACTION }}"
           echo "Justification: ${{ env.JUSTIFICATION }}"
 
-      - name: Ensure user exists in organization
-        run: gh api orgs/renan-org/members/${{ env.HANDLE }} --silent && echo "✅ User is a member" || (echo "❌ User is NOT a member" && exit 1)
-        
-      - name: Ensure admin-team.yml exists
+      - name: Ensure repository DOES NOT exist in organization
+        id: check-repo-existence
+        if: ${{ env.ACTION == 'add' }}
         run: |
-          if gh api repos/renan-org/.github/contents/admin-team.yml --silent; then
-            echo "✅ File exists."
-          else
-            echo "❌ File does not exist. Failing workflow."
-            exit 1
-          fi
-          
-      - name: Check if user is in admin-team.yml
-        shell: bash {0}
-        id: user-in-team
-        run: |
-          ls -la
-          grep '@${{ env.HANDLE }}' admin-team.yml >> /dev/null
-          if [ $? -eq 0 ]; then
-            echo "@${{ env.HANDLE }} is in the admin team list."
-            echo "result=true" >> $GITHUB_OUTPUT
-          else
-            echo "@${{ env.HANDLE }} is NOT in the admin team list."
-            echo "result=false" >> $GITHUB_OUTPUT
-          fi
+            gh api repos/renan-org/${{ env.REPO_NAME }} --silent && echo "❌ Repository already exists!" && exit 1 || echo "✅ Repository does not exist, proceeding ..."
 
-      - name: Add user to admin team
-        id: add-user
-        if: ${{ env.ACTION == 'add' && steps.user-in-team.outputs.result == 'false' }}
+      - name: Comment on Issue if repository already exists
+        if: always() && steps.check-repo-existence.outcome == 'failure'
         run: |
-          ls -la
-          echo "Adding @${{ env.HANDLE }} to admin team..."
-          sed -i "/^team_admins:/a \ \ - @${{ env.HANDLE }}" "admin-team.yml"
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "github-actions@github.com"
-          git checkout -b add-admin-${{ env.HANDLE }}-${{ github.run_id }}
-          git add admin-team.yml
-          git commit -m "Add @${{ env.HANDLE }} to admin team"
-          git push origin add-admin-${{ env.HANDLE }}-${{ github.run_id }}
-          PR_URL=$(gh pr create --title "Add @${{ env.HANDLE }} to admin team" --body "This PR adds @${{ env.HANDLE }} to the admin team." --base main --head add-admin-${{ env.HANDLE }}-${{ github.run_id }})
-          echo "pr_url=${PR_URL}" >> $GITHUB_OUTPUT
+          gh issue comment ${{ github.event.issue.number }} --body "❌ The repository ${{ env.REPO_NAME }} already exists in the organization. Please choose a different name."
 
-      - name: Comment on original issue (add)
-        if: ${{ env.ACTION == 'add' && steps.user-in-team.outputs.result == 'false' }}
+      - name: Ensure team EXISTS in organization
+        id: check-team-existence
+        if: ${{ env.ACTION == 'add' }}
         run: |
-          gh issue comment ${{ github.event.issue.number }} --body "‼️ User @${{ env.HANDLE }} will be added to the admin team via PR: ${{ steps.add-user.outputs.pr_url }}"
+            gh api orgs/renan-org/teams/${{ env.TEAM_NAME }} --silent && echo "✅ Team exists, proceeding ..." || (echo "❌ Team does not exist!" && exit 1)
 
-      - name: Remove user from admin team
-        id: remove-user
-        if: ${{ env.ACTION == 'remove' && steps.user-in-team.outputs.result == 'true' }}
+      - name: Comment on Issue if team does not exist
+        if: always() && steps.check-team-existence.outcome == 'failure'
         run: |
-          ls -la
-          echo "Removing @${{ env.HANDLE }} from admin team..."
-          sed -i "/^\s*-\s*@${{ env.HANDLE }}/d" "admin-team.yml"
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "github-actions@github.com"
-          git checkout -b remove-admin-${{ env.HANDLE }}-${{ github.run_id }}
-          git add admin-team.yml
-          git commit -m "Remove @${{ env.HANDLE }} from admin team"
-          git push origin remove-admin-${{ env.HANDLE }}-${{ github.run_id }}
-          PR_URL=$(gh pr create --title "Remove @${{ env.HANDLE }} from admin team" --body "This PR removes @${{ env.HANDLE }} from the admin team." --base main --head remove-admin-${{ env.HANDLE }}-${{ github.run_id }})
-          echo "pr_url=${PR_URL}" >> $GITHUB_OUTPUT
+          gh issue comment ${{ github.event.issue.number }} --body "❌ The team ${{ env.TEAM_NAME }} does not exist in the organization. Please create the team first or use an existing team."
 
-      - name: Comment on original issue (remove)
-        if: ${{ env.ACTION == 'remove' && steps.user-in-team.outputs.result == 'true' }}
+      - name: Create repository in organization
+        if: ${{ env.ACTION == 'add' }}
         run: |
-          gh issue comment ${{ github.event.issue.number }} --body "‼️ User @${{ env.HANDLE }} can be removed from the admin team via PR: ${{ steps.remove-user.outputs.pr_url }}"
+            gh api orgs/renan-org/repos --method POST --field name="${{ env.REPO_NAME }}" --field private=true && echo "🔄 Repository being created ..."
 
-      - name: Handle user already in team
-        if: ${{ env.ACTION == 'add' && steps.user-in-team.outputs.result == 'true' }}
+      - name: Assign team to repository
+        if: ${{ env.ACTION == 'add' }}
         run: |
-          gh issue comment ${{ github.event.issue.number }} --body "ℹ️ User @${{ env.HANDLE }} is already in the admin team."
+            gh api orgs/renan-org/teams/${{ env.TEAM_NAME }}/repos/renan-org/${{ env.REPO_NAME }} --method PUT --field permission="maintain" && echo "🔄 Team being assigned to repository ..."
 
-      - name: Handle user not in team
-        if: ${{ env.ACTION == 'remove' && steps.user-in-team.outputs.result == 'false' }}
+      - name: Comment on Issue regarding repository creation
+        if: ${{ env.ACTION == 'add' }}
         run: |
-          gh issue comment ${{ github.event.issue.number }} --body "ℹ️ User @${{ env.HANDLE }} is not in the admin team."
+          gh issue comment ${{ github.event.issue.number }} --body "✅ Repository ${{ env.REPO_NAME }} has been created successfully in the organization and assigned to team ${{ env.TEAM_NAME }}."
+
+      - name: Handle repository removal (not implemented)
+        if: ${{ env.ACTION == 'remove' }}
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body "❌ Repository removal is not currently implemented for safety reasons. Please contact an administrator if you need to remove the repository ${{ env.REPO_NAME }}."
+
+      - name: Comment on Issue regarding workflow failure
+        if: failure()
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body "❌ The repository ${{ env.REPO_NAME }} could not be created. Check logs in the workflow run linked earlier."

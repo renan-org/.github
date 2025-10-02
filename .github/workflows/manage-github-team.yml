@@ -56,7 +56,7 @@ jobs:
                     // Check for "Add @username to admin team"
                     let match;
                     while ((match = addPattern.exec(message)) !== null) {
-                        const username = match[1];
+                        const username = match[1].toLowerCase();
                         console.log(`Found ADD action for: @${username}`);
                         adminActions.push({
                             action: 'add',
@@ -68,7 +68,7 @@ jobs:
                     
                     // Check for "Remove @username from admin team"
                     while ((match = removePattern.exec(message)) !== null) {
-                        const username = match[1];
+                        const username = match[1].toLowerCase();
                         console.log(`Found REMOVE action for: @${username}`);
                         adminActions.push({
                             action: 'remove',

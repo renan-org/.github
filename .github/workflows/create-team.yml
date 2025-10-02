@@ -41,11 +41,11 @@ jobs:
 
       - name: Export parsed values to environment variables
         run: |
-          echo "TEAM_NAME=$(jq -r '.team_name' migrate_output.json)" >> $GITHUB_ENV
+          echo "TEAM_NAME=$(jq -r '.team_name' migrate_output.json | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
           echo "ACTION=$(jq -r '.action_type' migrate_output.json)" >> $GITHUB_ENV
           echo "JUSTIFICATION=$(jq -r '.justification' migrate_output.json)" >> $GITHUB_ENV
 
-      - name: "DEBUG:Show parsed data"
+      - name: "DEBUG - Show parsed data"
         run: |
           echo "Team to be created: ${{ env.TEAM_NAME }}"
           echo "Action: ${{ env.ACTION }}"
