@@ -11,7 +11,7 @@ body:
       value: |
         ## Automated Repository Management
 
-        This request will be automatically processed by the [Create Repository workflow](../workflows/create-repo.yml).
+        This request will be automatically processed by the [Create Repository workflow](../blob/main/.github/workflows/create-repo.yml).
 
         The workflow will:
         1. Validate that the repository does not exist in the organization.
