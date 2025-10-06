@@ -343,6 +343,11 @@ jobs:
       issues: write
     
     steps:
+      - name: Checkout current repository
+        uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Init gh cli
         run: gh auth login --with-token <<< ${{ secrets.ISSUE_OPS_TOKEN }}
 
