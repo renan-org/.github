@@ -242,11 +242,24 @@ jobs:
           for topic in "${TOPICS[@]}"; do
             echo "Searching for repositories with topic: $topic"
             # Use basic search and we'll filter by topics later
-            gh search repos --owner "${{ env.SOURCE_ORG }}" --topic "$topic" --include-forks true --json name,fullName,url --limit 1000 >> temp_repos_$topic.json
+            gh search repos --owner "${{ env.SOURCE_ORG }}" --topic "$topic" --include-forks true --json name,fullName,url --limit 1000 > temp_repos_$topic.json 2>/dev/null || echo '[]' > temp_repos_$topic.json
+            
+            # Check if the file has content, if not add empty array
+            if [ ! -s temp_repos_$topic.json ] || [ "$(cat temp_repos_$topic.json | tr -d '[:space:]')" = "" ]; then
+              echo '[]' > temp_repos_$topic.json
+            fi
           done
           
           # Combine all repositories and remove duplicates
           jq -s 'flatten | unique_by(.name)' temp_repos_*.json > unique_repos.json
+          
+          # Check if we have any repositories to process
+          if [ ! -s unique_repos.json ] || [ "$(cat unique_repos.json)" = "[]" ]; then
+            echo "❌ No repositories found with any of the specified topics"
+            echo "repos_found=false" >> $GITHUB_OUTPUT
+            rm -f temp_repos_*.json unique_repos.json
+            exit 1
+          fi
           
           # For each repository, fetch topics and check if it has ALL required topics
           echo "Checking topics for each repository..."
