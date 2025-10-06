@@ -27,7 +27,7 @@ body:
     attributes:
       label: (Source) Organization Name
       description: "Enter the name of the organization you are migrating FROM"
-      placeholder: "e.g., my-old-org"
+      placeholder: "e.g., demo-org-renan"
     validations:
       required: true
 
@@ -36,7 +36,7 @@ body:
     attributes:
       label: Team Name
       description: "Enter the name of the team that will own this repository"
-      placeholder: "e.g., my-team"
+      placeholder: "e.g., tech-leads"
     validations:
       required: true
 
