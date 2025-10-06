@@ -241,15 +241,60 @@ jobs:
           # Search for repositories with each topic
           for topic in "${TOPICS[@]}"; do
             echo "Searching for repositories with topic: $topic"
-            gh search repos --owner "${{ env.SOURCE_ORG }}" --topic "$topic" --include-forks true --json name,fullName,topics,cloneUrl --limit 1000 >> temp_repos_$topic.json
+            # Use basic search and we'll filter by topics later
+            gh search repos --owner "${{ env.SOURCE_ORG }}" --topic "$topic" --include-forks true --json name,fullName,url --limit 1000 >> temp_repos_$topic.json
           done
           
-          # Combine and filter repositories that have ALL specified topics
-          echo "Filtering repositories that contain ALL specified topics..."
-          jq -s 'flatten | unique_by(.name) | map(select(.topics | contains($topics))) | map({name: .name, full_name: .fullName, topics: .topics, clone_url: .cloneUrl})' --argjson topics "$(echo '${{ env.CLEANED_TOPICS }}' | tr ',' '\n' | jq -R . | jq -s .)" temp_repos_*.json > search_results.json
+          # Combine all repositories and remove duplicates
+          jq -s 'flatten | unique_by(.name)' temp_repos_*.json > unique_repos.json
+          
+          # For each repository, fetch topics and check if it has ALL required topics
+          echo "Checking topics for each repository..."
+          > search_results.json
+          while IFS= read -r repo; do
+            REPO_NAME=$(echo "$repo" | jq -r '.name')
+            FULL_NAME=$(echo "$repo" | jq -r '.fullName')
+            URL=$(echo "$repo" | jq -r '.url')
+            
+            echo "Checking topics for repository: $REPO_NAME"
+            
+            # Get repository topics using GitHub API
+            REPO_TOPICS=$(gh api repos/$FULL_NAME/topics --jq '.names' 2>/dev/null || echo '[]')
+            
+            # Check if repository has ALL required topics
+            HAS_ALL_TOPICS=true
+            for required_topic in "${TOPICS[@]}"; do
+              if ! echo "$REPO_TOPICS" | jq -e --arg topic "$required_topic" 'contains([$topic])' >/dev/null; then
+                HAS_ALL_TOPICS=false
+                break
+              fi
+            done
+            
+            # If repository has all topics, add it to results
+            if [ "$HAS_ALL_TOPICS" = true ]; then
+              echo "✅ Repository $REPO_NAME has all required topics"
+              # Create JSON object with repository info
+              jq -n \
+                --arg name "$REPO_NAME" \
+                --arg full_name "$FULL_NAME" \
+                --argjson topics "$REPO_TOPICS" \
+                --arg clone_url "${URL}.git" \
+                '{name: $name, full_name: $full_name, topics: $topics, clone_url: $clone_url}' >> search_results.json
+            else
+              echo "❌ Repository $REPO_NAME does not have all required topics"
+            fi
+          done < unique_repos.json
+          
+          # Convert individual JSON objects to array
+          if [ -s search_results.json ]; then
+            jq -s '.' search_results.json > temp_results.json
+            mv temp_results.json search_results.json
+          else
+            echo '[]' > search_results.json
+          fi
           
           # Cleanup temporary files
-          rm -f temp_repos_*.json
+          rm -f temp_repos_*.json unique_repos.json
           
           # Check if any repositories were found
           if [ ! -s search_results.json ] || [ "$(cat search_results.json)" = "[]" ]; then
