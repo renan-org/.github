@@ -1,0 +1,372 @@
+name: Migrate Repo Workflow
+on:
+  issues:
+    types: [opened, reopened]
+
+jobs:
+  migrate-repo:
+    if: contains(github.event.issue.labels.*.name, 'migrate-repo')
+    ### Make sure to manually create the label "migrate-repo" in the organization
+    ### https://github.com/renan-org/.github/issues/labels
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: write
+      pull-requests: write
+    
+    steps:
+      - name: Checkout current repository (for Issue template)
+        uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Init gh cli
+        ## You may want to use a GH App here instead
+        run: gh auth login --with-token <<< ${{ secrets.ISSUE_OPS_TOKEN }}
+        
+      - name: Comment on Issue regarding workflow processing
+        run: |
+            gh issue comment ${{ github.event.issue.number }} --body "This issue is being processed by the Repository Migration workflow. Please wait for the results. <br><br> 🔗 [View workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+
+      - name: Parse issue body
+        id: parse
+        uses: stefanbuck/github-issue-parser@v3
+        with:
+          template-path: .github/ISSUE_TEMPLATE/request-migration.yml
+          issue-body: "${{ github.event.issue.body }}"
+
+      - name: Save parsed output to file
+        id: gather-issue-inputs
+        run: echo '${{ steps.parse.outputs.jsonString }}' > migrate_output.json
+
+      - name: Export parsed values to environment variables
+        run: |
+          echo "SOURCE_ORG=$(jq -r '.org_name' migrate_output.json | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+          echo "TEAM_NAME=$(jq -r '.team_name' migrate_output.json | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+          echo "TOPIC_LIST=$(jq -r '.topic_list' migrate_output.json)" >> $GITHUB_ENV
+          echo "JUSTIFICATION=$(jq -r '.justification' migrate_output.json)" >> $GITHUB_ENV
+
+      - name: "DEBUG - Show parsed data"
+        run: |
+          echo "Source organization: ${{ env.SOURCE_ORG }}"
+          echo "Team to be assigned: ${{ env.TEAM_NAME }}"
+          echo "Topics to search for: ${{ env.TOPIC_LIST }}"
+          echo "Justification: ${{ env.JUSTIFICATION }}"
+
+      - name: Validate source organization name conventions
+        id: validate-source-org
+        run: |
+          SOURCE_ORG="${{ env.SOURCE_ORG }}"
+          echo "Validating source organization name: $SOURCE_ORG"
+          
+          # Check if org name is empty
+          if [ -z "$SOURCE_ORG" ]; then
+            echo "❌ Source organization name cannot be empty"
+            exit 1
+          fi
+          
+          # Check length (GitHub orgs: 1-39 characters)
+          if [ ${#SOURCE_ORG} -gt 39 ]; then
+            echo "❌ Organization name cannot be longer than 39 characters (current: ${#SOURCE_ORG})"
+            exit 1
+          fi
+          
+          # Check for invalid characters (only alphanumeric and hyphens)
+          if [[ ! "$SOURCE_ORG" =~ ^[a-z0-9-]+$ ]]; then
+            echo "❌ Organization name can only contain lowercase letters, numbers, and hyphens (-)"
+            exit 1
+          fi
+          
+          # Check if it starts or ends with hyphens
+          if [[ "$SOURCE_ORG" =~ ^- ]] || [[ "$SOURCE_ORG" =~ -$ ]]; then
+            echo "❌ Organization name cannot start or end with hyphens"
+            exit 1
+          fi
+          
+          echo "✅ Source organization name validation passed"
+
+      - name: Validate team name conventions
+        id: validate-team-name
+        run: |
+          TEAM_NAME="${{ env.TEAM_NAME }}"
+          echo "Validating team name: $TEAM_NAME"
+          
+          # Check if team name is empty
+          if [ -z "$TEAM_NAME" ]; then
+            echo "❌ Team name cannot be empty"
+            exit 1
+          fi
+          
+          # Check length (GitHub teams: 1-100 characters)
+          if [ ${#TEAM_NAME} -gt 100 ]; then
+            echo "❌ Team name cannot be longer than 100 characters (current: ${#TEAM_NAME})"
+            exit 1
+          fi
+          
+          # Check for invalid characters (only alphanumeric, hyphens, underscores, periods)
+          if [[ ! "$TEAM_NAME" =~ ^[a-z0-9._-]+$ ]]; then
+            echo "❌ Team name can only contain lowercase letters, numbers, hyphens (-), underscores (_), and periods (.)"
+            exit 1
+          fi
+          
+          # Check if it starts or ends with special characters
+          if [[ "$TEAM_NAME" =~ ^[._-] ]] || [[ "$TEAM_NAME" =~ [._-]$ ]]; then
+            echo "❌ Team name cannot start or end with hyphens, underscores, or periods"
+            exit 1
+          fi
+          
+          # Check for consecutive special characters
+          if [[ "$TEAM_NAME" =~ [._-]{2,} ]]; then
+            echo "❌ Team name cannot contain consecutive hyphens, underscores, or periods"
+            exit 1
+          fi
+          
+          echo "✅ Team name validation passed"
+
+      - name: Validate and process topics
+        id: validate-topics
+        run: |
+          TOPIC_LIST="${{ env.TOPIC_LIST }}"
+          echo "Validating topics: $TOPIC_LIST"
+          
+          # Check if topic list is empty
+          if [ -z "$TOPIC_LIST" ]; then
+            echo "❌ Topic list cannot be empty"
+            exit 1
+          fi
+          
+          # Convert comma-separated topics to array and validate each
+          IFS=',' read -ra TOPICS <<< "$TOPIC_LIST"
+          CLEANED_TOPICS=()
+          
+          for topic in "${TOPICS[@]}"; do
+            # Trim whitespace and convert to lowercase
+            topic=$(echo "$topic" | xargs | tr '[:upper:]' '[:lower:]')
+            
+            # Check topic length (GitHub topics: 1-50 characters)
+            if [ ${#topic} -gt 50 ]; then
+              echo "❌ Topic '$topic' cannot be longer than 50 characters (current: ${#topic})"
+              exit 1
+            fi
+            
+            # Check for invalid characters (only alphanumeric and hyphens)
+            if [[ ! "$topic" =~ ^[a-z0-9-]+$ ]]; then
+              echo "❌ Topic '$topic' can only contain lowercase letters, numbers, and hyphens (-)"
+              exit 1
+            fi
+            
+            # Check if it starts with a number or hyphen
+            if [[ "$topic" =~ ^[0-9-] ]]; then
+              echo "❌ Topic '$topic' cannot start with a number or hyphen"
+              exit 1
+            fi
+            
+            CLEANED_TOPICS+=("$topic")
+          done
+          
+          # Export cleaned topics
+          printf -v JOINED '%s,' "${CLEANED_TOPICS[@]}"
+          echo "CLEANED_TOPICS=${JOINED%,}" >> $GITHUB_ENV
+          
+          echo "✅ Topics validation passed: ${CLEANED_TOPICS[*]}"
+
+      - name: Comment on Issue if source organization validation fails
+        if: always() && steps.validate-source-org.outcome == 'failure'
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body "❌ The source organization name '${{ env.SOURCE_ORG }}' does not follow GitHub naming conventions. Organization names must:
+          - Be 1-39 characters long
+          - Contain only lowercase letters, numbers, and hyphens (-)
+          - Not start or end with hyphens"
+
+      - name: Comment on Issue if team name validation fails
+        if: always() && steps.validate-team-name.outcome == 'failure'
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body "❌ The team name '${{ env.TEAM_NAME }}' does not follow GitHub naming conventions. Team names must:
+          - Be 1-100 characters long
+          - Contain only lowercase letters, numbers, hyphens (-), underscores (_), and periods (.)
+          - Not start or end with special characters
+          - Not contain consecutive special characters"
+
+      - name: Comment on Issue if topics validation fails
+        if: always() && steps.validate-topics.outcome == 'failure'
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body "❌ One or more topics do not follow GitHub naming conventions. Topics must:
+          - Be 1-50 characters long
+          - Contain only lowercase letters, numbers, and hyphens (-)
+          - Not start with a number or hyphen
+          - Be comma-separated if multiple topics are provided"
+
+      - name: Verify source organization is accessible
+        id: check-source-org
+        run: |
+            gh api orgs/${{ env.SOURCE_ORG }} --silent && echo "✅ Source organization is accessible" || (echo "❌ Source organization is not accessible!" && exit 1)
+
+      - name: Comment on Issue if source organization is not accessible
+        if: always() && steps.check-source-org.outcome == 'failure'
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body "❌ The source organization '${{ env.SOURCE_ORG }}' is not accessible. Please verify the organization name and ensure you have permissions to access it."
+
+      - name: Ensure team EXISTS in target organization
+        id: check-team-existence
+        run: |
+            gh api orgs/renan-org/teams/${{ env.TEAM_NAME }} --silent && echo "✅ Team exists, proceeding ..." || (echo "❌ Team does not exist!" && exit 1)
+
+      - name: Comment on Issue if team does not exist
+        if: always() && steps.check-team-existence.outcome == 'failure'
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body "❌ The team '${{ env.TEAM_NAME }}' does not exist in the target organization. Please create the team first or use an existing team."
+
+      - name: Search for repositories with matching topics
+        id: search-repos
+        run: |
+          echo "Searching for repositories in ${{ env.SOURCE_ORG }} with topics: ${{ env.CLEANED_TOPICS }}"
+          
+          # Convert topics to search query format
+          IFS=',' read -ra TOPICS <<< "${{ env.CLEANED_TOPICS }}"
+          TOPIC_QUERY=""
+          for topic in "${TOPICS[@]}"; do
+            TOPIC_QUERY="${TOPIC_QUERY}topic:${topic} "
+          done
+          
+          # Search for repositories
+          SEARCH_QUERY="org:${{ env.SOURCE_ORG }} ${TOPIC_QUERY}is:public"
+          echo "Search query: $SEARCH_QUERY"
+          
+          # Execute search and save results
+          gh api search/repositories -f q="$SEARCH_QUERY" --jq '.items[] | select(.topics | length > 0) | select(.topics | contains($topics)) | {name: .name, full_name: .full_name, topics: .topics, clone_url: .clone_url}' --argjson topics "$(echo '${{ env.CLEANED_TOPICS }}' | tr ',' '\n' | jq -R . | jq -s .)" > search_results.json
+          
+          # Check if any repositories were found
+          if [ ! -s search_results.json ]; then
+            echo "❌ No repositories found with all specified topics"
+            echo "REPOS_FOUND=false" >> $GITHUB_ENV
+            exit 1
+          else
+            REPO_COUNT=$(cat search_results.json | jq -s length)
+            echo "✅ Found $REPO_COUNT repositories matching all topics"
+            echo "REPOS_FOUND=true" >> $GITHUB_ENV
+            echo "REPO_COUNT=$REPO_COUNT" >> $GITHUB_ENV
+            
+            # Display found repositories
+            echo "Found repositories:"
+            cat search_results.json | jq -r '.full_name'
+          fi
+
+      - name: Comment on Issue if no repositories found
+        if: always() && steps.search-repos.outcome == 'failure'
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body "❌ No repositories were found in organization '${{ env.SOURCE_ORG }}' that contain ALL of the specified topics: ${{ env.CLEANED_TOPICS }}. Please verify:
+          - The organization name is correct
+          - The topics exist on repositories in that organization
+          - All specified topics are present on the same repositories"
+
+      - name: Process repository migrations
+        if: env.REPOS_FOUND == 'true'
+        run: |
+          echo "Processing repository migrations..."
+          MIGRATED_REPOS=()
+          FAILED_REPOS=()
+          
+          # Process each found repository
+          while IFS= read -r repo; do
+            REPO_NAME=$(echo "$repo" | jq -r '.name')
+            FULL_NAME=$(echo "$repo" | jq -r '.full_name')
+            CLONE_URL=$(echo "$repo" | jq -r '.clone_url')
+            
+            echo "🔄 Processing repository: $REPO_NAME"
+            
+            # Check if repository already exists in target organization
+            if gh api repos/renan-org/$REPO_NAME --silent 2>/dev/null; then
+              echo "⚠️ Repository $REPO_NAME already exists in target organization, skipping..."
+              FAILED_REPOS+=("$REPO_NAME (already exists)")
+              continue
+            fi
+            
+            # Create repository in target organization
+            if gh api orgs/renan-org/repos --method POST --field name="$REPO_NAME" --field private=true --silent; then
+              echo "✅ Created repository: $REPO_NAME"
+              
+              # Clone source repository to temporary directory
+              TEMP_DIR=$(mktemp -d)
+              if git clone "$CLONE_URL" "$TEMP_DIR" 2>/dev/null; then
+                # Push to new repository
+                cd "$TEMP_DIR"
+                git remote remove origin
+                git remote add origin "https://github.com/renan-org/$REPO_NAME.git"
+                
+                if git push origin --all 2>/dev/null && git push origin --tags 2>/dev/null; then
+                  echo "✅ Successfully migrated content for: $REPO_NAME"
+                  
+                  # Assign team to repository
+                  if gh api orgs/renan-org/teams/${{ env.TEAM_NAME }}/repos/renan-org/$REPO_NAME --method PUT --field permission="maintain" --silent; then
+                    echo "✅ Assigned team to: $REPO_NAME"
+                    MIGRATED_REPOS+=("$REPO_NAME")
+                  else
+                    echo "⚠️ Failed to assign team to: $REPO_NAME"
+                    MIGRATED_REPOS+=("$REPO_NAME (without team assignment)")
+                  fi
+                else
+                  echo "❌ Failed to push content for: $REPO_NAME"
+                  FAILED_REPOS+=("$REPO_NAME (push failed)")
+                fi
+                
+                # Cleanup
+                cd - > /dev/null
+                rm -rf "$TEMP_DIR"
+              else
+                echo "❌ Failed to clone: $REPO_NAME"
+                FAILED_REPOS+=("$REPO_NAME (clone failed)")
+              fi
+            else
+              echo "❌ Failed to create repository: $REPO_NAME"
+              FAILED_REPOS+=("$REPO_NAME (creation failed)")
+            fi
+          done < search_results.json
+          
+          # Export results
+          printf -v MIGRATED_LIST '%s, ' "${MIGRATED_REPOS[@]}"
+          printf -v FAILED_LIST '%s, ' "${FAILED_REPOS[@]}"
+          echo "MIGRATED_REPOS=${MIGRATED_LIST%, }" >> $GITHUB_ENV
+          echo "FAILED_REPOS=${FAILED_LIST%, }" >> $GITHUB_ENV
+          echo "MIGRATION_SUCCESS_COUNT=${#MIGRATED_REPOS[@]}" >> $GITHUB_ENV
+          echo "MIGRATION_FAILURE_COUNT=${#FAILED_REPOS[@]}" >> $GITHUB_ENV
+
+      - name: Comment on Issue with migration results
+        if: env.REPOS_FOUND == 'true'
+        run: |
+          SUCCESS_COUNT="${{ env.MIGRATION_SUCCESS_COUNT }}"
+          FAILURE_COUNT="${{ env.MIGRATION_FAILURE_COUNT }}"
+          MIGRATED="${{ env.MIGRATED_REPOS }}"
+          FAILED="${{ env.FAILED_REPOS }}"
+          
+          COMMENT="## 🔄 Repository Migration Results
+          
+          **Migration Summary:**
+          - ✅ Successfully migrated: $SUCCESS_COUNT repositories
+          - ❌ Failed migrations: $FAILURE_COUNT repositories
+          - 👥 Assigned to team: ${{ env.TEAM_NAME }}
+          
+          "
+          
+          if [ ! -z "$MIGRATED" ]; then
+            COMMENT="${COMMENT}**Successfully Migrated Repositories:**
+            $MIGRATED
+            
+            "
+          fi
+          
+          if [ ! -z "$FAILED" ]; then
+            COMMENT="${COMMENT}**Failed Migrations:**
+            $FAILED
+            
+            "
+          fi
+          
+          COMMENT="${COMMENT}**Migration completed from organization:** ${{ env.SOURCE_ORG }}
+          **Using topics filter:** ${{ env.CLEANED_TOPICS }}"
+          
+          gh issue comment ${{ github.event.issue.number }} --body "$COMMENT"
+
+      - name: Comment on Issue regarding workflow failure
+        if: failure()
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body "❌ The repository migration workflow failed. Check logs in the workflow run linked earlier."
