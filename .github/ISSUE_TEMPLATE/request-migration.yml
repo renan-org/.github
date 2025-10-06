@@ -1,7 +1,7 @@
 ---
-name: Migrate repo
-description: Request to migrate a repository using topics 
-title: "[MIGRATION] Migrate repo"
+name: Migrate repos via topics
+description: Request to migrate repositories using topics
+title: "[MIGRATION] Migrate repos via topics"
 labels: [migrate-repo] # Make sure this label exists in your organization (https://github.com/renan-org/.github/issues/labels)
 # assignees: ["maintainer1"] ## You may want to assign maintainers to triage these requests
 
