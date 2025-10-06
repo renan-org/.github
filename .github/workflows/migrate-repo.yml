@@ -9,7 +9,10 @@ jobs:
   init-migration:
     if: |
       (github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'migrate-repo')) ||
-      (github.event_name == 'issue_comment' && contains(github.event.issue.labels.*.name, 'migrate-repo') && contains(github.event.comment.body, 'rerun migration'))
+      (github.event_name == 'issue_comment' && 
+       contains(github.event.issue.labels.*.name, 'migrate-repo') && 
+       contains(github.event.comment.body, 'rerun migration') &&
+       github.event.comment.user.type != 'Bot')
     ### Make sure to manually create the label "migrate-repo" in the organization
     ### https://github.com/renan-org/.github/issues/labels
     runs-on: ubuntu-latest
@@ -34,7 +37,7 @@ jobs:
       - name: Comment on Issue regarding workflow processing
         run: |
           if [ "${{ github.event_name }}" = "issue_comment" ]; then
-            gh issue comment ${{ github.event.issue.number }} --body "♻️ **Migration Rerun Triggered** - This issue migration is being reprocessed due to the 'rerun migration' comment. Please wait for the results. <br><br> 🔗 [View workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+            gh issue comment ${{ github.event.issue.number }} --body "♻️ **Migration Restart Triggered** - This issue migration is being reprocessed due to a restart request. Please wait for the results. <br><br> 🔗 [View workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
           else
             gh issue comment ${{ github.event.issue.number }} --body "This issue is being processed by the Repository Migration workflow. Please wait for the results. <br><br> 🔗 [View workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
           fi
