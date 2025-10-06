@@ -333,7 +333,7 @@ jobs:
       - name: Comment on Issue regarding failure
         if: failure()
         run: |
-          gh issue comment ${{ github.event.issue.number }} --body "❌ The repository migration for \"${{ matrix.repo_name }}\" failed. Check logs in the workflow run linked in the previous job."
+          gh issue comment ${{ github.event.issue.number }} --body "❌ The repository migration for "${{ matrix.repo_name }}" failed. Check logs in the workflow run linked in the previous job."
 
   summarize-results:
     needs: [init-migration, migrate-repositories]

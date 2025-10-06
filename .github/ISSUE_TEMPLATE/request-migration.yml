@@ -25,7 +25,7 @@ body:
   - type: input
     id: org_name
     attributes:
-      label: (Source) Organization Name
+      label: Organization Name (Source)
       description: "Enter the name of the organization you are migrating FROM"
       placeholder: "e.g., demo-org-renan"
     validations:
