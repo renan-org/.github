@@ -232,27 +232,32 @@ jobs:
         run: |
           echo "Searching for repositories in ${{ env.SOURCE_ORG }} with topics: ${{ env.CLEANED_TOPICS }}"
           
-          # Convert topics to search query format
+          # Convert comma-separated topics to array
           IFS=',' read -ra TOPICS <<< "${{ env.CLEANED_TOPICS }}"
-          TOPIC_QUERY=""
+          
+          # Create temporary file to collect all repositories
+          > all_repos.json
+          
+          # Search for repositories with each topic
           for topic in "${TOPICS[@]}"; do
-            TOPIC_QUERY="${TOPIC_QUERY}topic:${topic} "
+            echo "Searching for repositories with topic: $topic"
+            gh search repos --owner "${{ env.SOURCE_ORG }}" --topic "$topic" --include-forks true --json name,fullName,topics,cloneUrl --limit 1000 >> temp_repos_$topic.json
           done
           
-          # Search for repositories
-          SEARCH_QUERY="org:${{ env.SOURCE_ORG }} ${TOPIC_QUERY}is:public"
-          echo "Search query: $SEARCH_QUERY"
+          # Combine and filter repositories that have ALL specified topics
+          echo "Filtering repositories that contain ALL specified topics..."
+          jq -s 'flatten | unique_by(.name) | map(select(.topics | contains($topics))) | map({name: .name, full_name: .fullName, topics: .topics, clone_url: .cloneUrl})' --argjson topics "$(echo '${{ env.CLEANED_TOPICS }}' | tr ',' '\n' | jq -R . | jq -s .)" temp_repos_*.json > search_results.json
           
-          # Execute search and save results
-          gh api search/repositories -f q="$SEARCH_QUERY" --jq '.items[] | select(.topics | length > 0) | select(.topics | contains($topics)) | {name: .name, full_name: .full_name, topics: .topics, clone_url: .clone_url}' --argjson topics "$(echo '${{ env.CLEANED_TOPICS }}' | tr ',' '\n' | jq -R . | jq -s .)" > search_results.json
+          # Cleanup temporary files
+          rm -f temp_repos_*.json
           
           # Check if any repositories were found
-          if [ ! -s search_results.json ]; then
+          if [ ! -s search_results.json ] || [ "$(cat search_results.json)" = "[]" ]; then
             echo "❌ No repositories found with all specified topics"
             echo "repos_found=false" >> $GITHUB_OUTPUT
             exit 1
           else
-            REPO_COUNT=$(cat search_results.json | jq -s length)
+            REPO_COUNT=$(cat search_results.json | jq length)
             echo "✅ Found $REPO_COUNT repositories matching all topics"
             echo "repos_found=true" >> $GITHUB_OUTPUT
             echo "REPO_COUNT=$REPO_COUNT" >> $GITHUB_ENV
