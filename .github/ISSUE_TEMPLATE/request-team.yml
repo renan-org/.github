@@ -9,9 +9,9 @@ body:
   - type: markdown
     attributes:
       value: |
-        ## Automated Admin Team Management
+        ## Automated Team Management
 
-        This request will be automatically processed by the [Admin Team Management workflow](../blob/main/.github/workflows/create-team.yml).
+        This request will be automatically processed by the [Create Team workflow](../blob/main/.github/workflows/create-team.yml).
 
         The workflow will:
         1. Validate that the team does not exist in the organization.

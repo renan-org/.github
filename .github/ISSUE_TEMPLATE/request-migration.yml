@@ -1,7 +1,7 @@
 ---
 name: Migrate repo
 description: Request to migrate a repository using topics 
-title: "[REPO] Migrate repo"
+title: "[MIGRATION] Migrate repo"
 labels: [migrate-repo] # Make sure this label exists in your organization (https://github.com/renan-org/.github/issues/labels)
 # assignees: ["maintainer1"] ## You may want to assign maintainers to triage these requests
 
@@ -11,7 +11,7 @@ body:
       value: |
         ## Repository Migration via topics
 
-        This request will be automatically processed by the [Create Repository workflow](../blob/main/.github/workflows/migrate-repo.yml).
+        This request will be automatically processed by the [Migrate Repository workflow](../blob/main/.github/workflows/migrate-repo.yml).
 
         The workflow will:
         1. Validate that the repository does not exist in the (target) organization.
