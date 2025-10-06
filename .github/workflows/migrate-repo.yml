@@ -312,7 +312,7 @@ jobs:
           fi
           
           # Migrate repository using gh gei
-          if gh gei migrate-repo --github-source-org "${{ env.SOURCE_ORG }}" --source-repo "$REPO_NAME" --github-target-org "renan-org" --target-repo "$REPO_NAME" --target-repo-visibility private --wait; then
+          if gh gei migrate-repo --github-source-org "${{ env.SOURCE_ORG }}" --source-repo "$REPO_NAME" --github-target-org "renan-org" --target-repo "$REPO_NAME" --target-repo-visibility internal; then
             echo "✅ Successfully migrated repository: $REPO_NAME"
             echo "status=success" >> $GITHUB_OUTPUT
             
