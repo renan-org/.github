@@ -9,6 +9,11 @@ const path = require('path');
  */
 async function searchRepositories() {
   try {
+    // Verify GH_PAT environment variable is set
+    if (!process.env.GH_PAT) {
+      throw new Error('GH_PAT environment variable is not set. This is required for GitHub API authentication.');
+    }
+
     // Get environment variables
     const sourceOrg = process.env.SOURCE_ORG;
     const cleanedTopics = process.env.CLEANED_TOPICS;

@@ -1,4 +1,35 @@
 name: Migrate Repo Workflow
+
+# REQUIRED PERMISSIONS FOR ISSUE_OPS_TOKEN:
+# This workflow requires a Personal Access Token (PAT) or GitHub App token with the following permissions:
+# 
+# 🔐 REQUIRED SCOPES/PERMISSIONS:
+# - repo (Full control of private repositories)
+#   - Required for: Accessing source repos, creating target repos, managing repo settings
+# - admin:org (Full control of orgs and teams, read and write org projects)
+#   - Required for: Team assignments, organization access, repository creation in target org
+# - write:packages (Upload packages to GitHub Package Registry)
+#   - Required for: Repository migration with packages/releases
+# - read:user (Read all user profile data)
+#   - Required for: User authentication and validation
+# - user:email (Access user email addresses)
+#   - Required for: Proper attribution during migration
+#
+# 🏢 ORGANIZATIONAL REQUIREMENTS:
+# - Token must have access to BOTH source and target organizations
+# - Must be a member or have appropriate permissions in target organization (renan-org)
+# - Must have admin/maintain permissions to create repositories in target organization
+# - Must have read access to source organization repositories
+#
+# 📋 SETUP INSTRUCTIONS:
+# 1. Create a PAT at: https://github.com/settings/tokens/new
+# 2. Select the scopes listed above
+# 3. Add the token as a repository secret named 'ISSUE_OPS_TOKEN'
+# 4. Ensure the token owner has necessary organization memberships/permissions
+#
+# ⚠️  SECURITY NOTE:
+# Store the token as a repository secret, never commit it to code!
+
 on:
   issues:
     types: [opened, reopened]
@@ -30,9 +61,27 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Init gh cli
+      - name: Init gh cli and set GH_PAT
         ## You may want to use a GH App here instead
-        run: gh auth login --with-token <<< ${{ secrets.ISSUE_OPS_TOKEN }}
+        run: |
+          # Verify ISSUE_OPS_TOKEN is set
+          if [ -z "${{ secrets.ISSUE_OPS_TOKEN }}" ]; then
+            echo "❌ ISSUE_OPS_TOKEN secret is not configured"
+            echo "Please configure ISSUE_OPS_TOKEN secret with the following permissions:"
+            echo "- repo (full control of private repositories)"
+            echo "- admin:org (full control of orgs and teams, read and write org projects)"
+            echo "- write:packages (upload packages to github package registry)"
+            echo "- read:user (read all user profile data)"
+            echo "- user:email (access user email addresses)"
+            exit 1
+          fi
+          
+          # Set GH_PAT environment variable for GitHub CLI
+          export GH_PAT="${{ secrets.ISSUE_OPS_TOKEN }}"
+          echo "GH_PAT=${{ secrets.ISSUE_OPS_TOKEN }}" >> $GITHUB_ENV
+          
+          # Authenticate with GitHub CLI
+          gh auth login --with-token <<< ${{ secrets.ISSUE_OPS_TOKEN }}
         
       - name: Comment on Issue regarding workflow processing
         run: |
@@ -289,8 +338,20 @@ jobs:
           echo "SOURCE_ORG=$(jq -r '.org_name' migrate_output.json | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
           echo "TEAM_NAME=$(jq -r '.team_name' migrate_output.json | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
-      - name: Init gh cli
-        run: gh auth login --with-token <<< ${{ secrets.ISSUE_OPS_TOKEN }}
+      - name: Init gh cli and set GH_PAT
+        run: |
+          # Verify ISSUE_OPS_TOKEN is set
+          if [ -z "${{ secrets.ISSUE_OPS_TOKEN }}" ]; then
+            echo "❌ ISSUE_OPS_TOKEN secret is not configured"
+            exit 1
+          fi
+          
+          # Set GH_PAT environment variable for GitHub CLI and GEI
+          export GH_PAT="${{ secrets.ISSUE_OPS_TOKEN }}"
+          echo "GH_PAT=${{ secrets.ISSUE_OPS_TOKEN }}" >> $GITHUB_ENV
+          
+          # Authenticate with GitHub CLI
+          gh auth login --with-token <<< ${{ secrets.ISSUE_OPS_TOKEN }}
 
       - name: Install gh GEI extension
         run: |
@@ -302,6 +363,13 @@ jobs:
         run: |
           REPO_NAME="${{ matrix.repo_name }}"
           echo "🔄 Migrating repository: $REPO_NAME"
+          
+          # Verify GH_PAT is set for GitHub Enterprise Importer
+          if [ -z "$GH_PAT" ]; then
+            echo "❌ GH_PAT environment variable is not set"
+            echo "This is required for GitHub Enterprise Importer (gh gei) to function properly"
+            exit 1
+          fi
           
           # Check if repository already exists in target organization
           if gh api repos/renan-org/$REPO_NAME --silent 2>/dev/null; then
@@ -348,8 +416,20 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Init gh cli
-        run: gh auth login --with-token <<< ${{ secrets.ISSUE_OPS_TOKEN }}
+      - name: Init gh cli and set GH_PAT
+        run: |
+          # Verify ISSUE_OPS_TOKEN is set
+          if [ -z "${{ secrets.ISSUE_OPS_TOKEN }}" ]; then
+            echo "❌ ISSUE_OPS_TOKEN secret is not configured"
+            exit 1
+          fi
+          
+          # Set GH_PAT environment variable for GitHub CLI
+          export GH_PAT="${{ secrets.ISSUE_OPS_TOKEN }}"
+          echo "GH_PAT=${{ secrets.ISSUE_OPS_TOKEN }}" >> $GITHUB_ENV
+          
+          # Authenticate with GitHub CLI
+          gh auth login --with-token <<< ${{ secrets.ISSUE_OPS_TOKEN }}
 
       - name: Download migration data
         uses: actions/download-artifact@v4
