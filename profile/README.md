@@ -40,7 +40,7 @@ To create a new repository within this organization, you will need to already ha
 ### Frontend Applications
 - [Node.js React Build](/workflow-templates/03-template-react-build.yml) - Build and deployment pipeline for React applications with Azure Static Web Apps.
 
-### Security
+### Security (Not implemented)
 - [Security Scanning](/workflow-templates/04-template-security-scan.yml) - Security analysis workflow using CodeQL and dependency scanning.
 
 <!--
