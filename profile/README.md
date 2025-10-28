@@ -31,17 +31,27 @@ To create a new repository within this organization, you will need to already ha
 
 ## Available Workflow Templates
 
+**Workflow Templates** are starter workflows that help you quickly set up GitHub Actions CI/CD pipelines for new repositories. They provide a pre-configured starting point that you can customize for your specific needs.
+
 ### Java Applications
+
 - [Java Spring Boot CI/CD Pipeline](/workflow-templates/01-template-java-app-build.yml) - Complete pipeline for containerized Spring Boot apps with Azure Container Apps deployment.
 
 ### Infrastructure as Code
+
 - [Terraform Deployment](/workflow-templates/02-template-terraform.yml) - Terraform deployment workflow with state management and Azure integration.
 
 ### Frontend Applications
+
 - [Node.js React Build](/workflow-templates/03-template-react-build.yml) - Build and deployment pipeline for React applications with Azure Static Web Apps.
 
+## Reusable Workflows
+
+**Reusable Workflows** are shared workflow definitions that can be called from other repositories and workflows. They promote code reuse and consistency across multiple projects without duplicating workflow code.
+
 ### Security
-- [Security Scanning](https://github.com/renan-org/shared-security-scan/blob/main/.github/workflows/security-scan.yml) - Security analysis workflow (DUMMY).
+
+- [Security Scanning](https://github.com/renan-org/shared-security-scan/blob/main/.github/workflows/security-scan.yml) - Reusable security analysis workflow for automated scanning and vulnerability detection.
 
 <!--
 **Here are some ideas to get you started:**
