@@ -29,6 +29,8 @@ To create a new repository within this organization, you will need to already ha
     <img src="https://img.shields.io/badge/Create%20a%20New%20Repository-4B9CD3?style=flat-square&logo=github" alt="Create a New Repository" />
 </a>
 
+---------------------
+
 ## 📋 Available Workflow Templates
 
 **Workflow Templates** are starter workflows that help you quickly set up GitHub Actions CI/CD pipelines for new repositories. They provide a pre-configured starting point that you can customize for your specific needs.
@@ -44,6 +46,8 @@ To create a new repository within this organization, you will need to already ha
 ### Frontend Applications
 
 - [Node.js React Build](/workflow-templates/03-template-react-build.yml) - Build and deployment pipeline for React applications with Azure Static Web Apps.
+
+---------------------
 
 ## 🔄 Reusable Workflows
 
