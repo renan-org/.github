@@ -1,0 +1,50 @@
+---
+name: Create Team
+description: Request to create a new team within the organization.
+title: "[TEAM] Create team"
+labels: [create-team]
+# assignees: ["maintainer1"] ## You may want to assign maintainers to triage these requests
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Automated Team Management
+
+        This request will be automatically processed by the [Create Team workflow](../blob/main/.github/workflows/create-team.yml).
+
+        The workflow will:
+        1. Validate that the team does not exist in the organization.
+        2. Create a new team in the organization.
+
+        Remove functionality may be implemented. In that scenario, teams owning repositories CANNOT be deleted.
+        
+  - type: input
+    id: team_name
+    attributes:
+      label: Team Name
+      description: "Enter the name of the team to create"
+      placeholder: "e.g., my-new-team"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: action_type
+    attributes:
+      label: Modification/Action Type
+      description: "Select the type of modification"
+      options:
+        - add
+        - remove
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: justification
+    attributes:
+      label: Justification
+      description: "Provide a brief justification for this request"
+      placeholder: "Please explain why this admin access change is needed..."
+    validations:
+      required: false

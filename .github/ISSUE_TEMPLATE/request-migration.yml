@@ -1,0 +1,59 @@
+---
+name: Migrate repos via topics
+description: Request to migrate repositories using topics
+title: "[MIGRATION] Migrate repos via topics"
+labels: [migrate-repo] # Make sure this label exists in your organization (https://github.com/renan-org/.github/issues/labels)
+# assignees: ["maintainer1"] ## You may want to assign maintainers to triage these requests
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Repository Migration via topics
+
+        This request will be automatically processed by the [Migrate Repository workflow](../blob/main/.github/workflows/migrate-repo.yml).
+
+        The workflow will:
+        1. Validate that the repository does not exist in the (target) organization.
+        2. Validate that the specified team exists in the organization.
+        3. Validate that the (source) organization is accessible.
+        4. Search for the pre-defined topics in repositories part of the (source) organization.
+        5. Perform the migration creating a new repository in the (target) organization.
+        6. Assign the specified team to the newly migrated repository.
+
+        
+  - type: input
+    id: org_name
+    attributes:
+      label: Organization Name (Source)
+      description: "Enter the name of the organization you are migrating FROM"
+      placeholder: "e.g., demo-org-renan"
+    validations:
+      required: true
+
+  - type: input
+    id: team_name
+    attributes:
+      label: Team Name
+      description: "Enter the name of the team that will own this repository"
+      placeholder: "e.g., tech-leads"
+    validations:
+      required: true
+
+  - type: input
+    id: topic_list
+    attributes:
+      label: Topics (comma separated)
+      description: "Enter a comma separated list of topics to filter repositories for migration. All topics MUST match for the repo to be migrated."
+      placeholder: "e.g.: topic1, topic2, topic3"
+    validations:
+      required: true
+
+  - type: textarea
+    id: justification
+    attributes:
+      label: Extra information / Justification
+      description: "Provide any extra information or brief justification for this request"
+      placeholder: "Please explain why this repository is needed..."
+    validations:
+      required: false

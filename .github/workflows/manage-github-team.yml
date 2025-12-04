@@ -1,0 +1,184 @@
+name: Manage GitHub (Admin) Team
+
+on:
+    workflow_dispatch:
+    push:
+        branches:
+            - main
+    
+
+jobs:
+  manage-github-team:
+    runs-on: ubuntu-latest
+    steps:
+        - name: Checkout repository
+          uses: actions/checkout@v4
+
+        - name: Init gh cli
+          run: gh auth login --with-token <<< ${{ secrets.SUPER_TOKEN }}
+
+        - name: Get PR info
+          uses: actions/github-script@v7
+          id: get-pr
+          with:
+            github-token: ${{ secrets.GITHUB_TOKEN }}
+            script: |
+                const pr = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    commit_sha: context.sha
+                });
+                
+                if (!pr.data || pr.data.length === 0) {
+                    console.log('No PR found for this commit');
+                    core.setOutput('admin_actions', '[]');
+                    return;
+                }
+                
+                const prNumber = pr.data[0].number;
+                console.log(`Found PR #${prNumber}`);
+                
+                // Get all commits in the PR
+                const commits = await github.rest.pulls.listCommits({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    pull_number: prNumber
+                });
+                
+                const adminActions = [];
+                const addPattern = /add\s+@(\w+)\s+to\s+admin\s+team/gi;
+                const removePattern = /remove[d]?\s+@(\w+)\s+(from\s+)?admin\s+team/gi;
+                
+                for (const commit of commits.data) {
+                    const message = commit.commit.message;
+                    console.log(`Checking commit: ${commit.sha.substring(0, 7)} - ${message}`);
+                    
+                    // Check for "Add @username to admin team"
+                    let match;
+                    while ((match = addPattern.exec(message)) !== null) {
+                        const username = match[1].toLowerCase();
+                        console.log(`Found ADD action for: @${username}`);
+                        adminActions.push({
+                            action: 'add',
+                            username: username,
+                            commit_sha: commit.sha,
+                            commit_message: message
+                        });
+                    }
+                    
+                    // Check for "Remove @username from admin team"
+                    while ((match = removePattern.exec(message)) !== null) {
+                        const username = match[1].toLowerCase();
+                        console.log(`Found REMOVE action for: @${username}`);
+                        adminActions.push({
+                            action: 'remove',
+                            username: username,
+                            commit_sha: commit.sha,
+                            commit_message: message
+                        });
+                    }
+                }
+                
+                console.log(`Found ${adminActions.length} admin team actions`);
+                core.setOutput('admin_actions', JSON.stringify(adminActions));
+                
+                // Also get PR body inputs for backward compatibility
+                const body = pr.data[0]?.body || '';
+                const inputMatch = body.match(/<!--INPUTS([\s\S]*?)-->/);
+                const inputs = inputMatch ? inputMatch[1].trim() : '';
+                core.setOutput('inputs', inputs);
+
+        - name: Use inputs
+          run: echo "${{ steps.get-pr.outputs.inputs }}"
+
+        - name: Process admin team actions
+          run: |
+            echo "Admin team actions found:"
+            echo '${{ steps.get-pr.outputs.admin_actions }}' | jq '.'
+            
+            # Parse admin actions and process each one
+            admin_actions='${{ steps.get-pr.outputs.admin_actions }}'
+            
+            if [ "$admin_actions" != "[]" ] && [ "$admin_actions" != "" ]; then
+              echo "Processing admin team changes..."
+              
+              # Loop through each action
+              echo "$admin_actions" | jq -c '.[]' | while read -r action; do
+                username=$(echo "$action" | jq -r '.username')
+                action_type=$(echo "$action" | jq -r '.action')
+                commit_sha=$(echo "$action" | jq -r '.commit_sha')
+                
+                echo "Processing: $action_type @$username (from commit $commit_sha)"
+                
+                if [ "$action_type" = "add" ]; then
+                  echo "Would add @$username to admin team"
+                  # gh api -X PUT "/orgs/${{ github.repository_owner }}/teams/admin/memberships/$username"
+                elif [ "$action_type" = "remove" ]; then
+                  echo "Would remove @$username from admin team"
+                  # gh api -X DELETE "/orgs/${{ github.repository_owner }}/teams/admin/memberships/$username"
+                fi
+              done
+            else
+              echo "No admin team actions found in PR commits"
+            fi
+
+        - name: Execute admin team changes
+          run: |
+            echo "Executing admin team changes using SUPER_TOKEN..."
+            
+            # Parse admin actions and execute each one
+            admin_actions='${{ steps.get-pr.outputs.admin_actions }}'
+            
+            if [ "$admin_actions" != "[]" ] && [ "$admin_actions" != "" ]; then
+              echo "Found admin actions to execute"
+              
+              # Loop through each action and execute it
+              echo "$admin_actions" | jq -c '.[]' | while read -r action; do
+                username=$(echo "$action" | jq -r '.username')
+                action_type=$(echo "$action" | jq -r '.action')
+                commit_sha=$(echo "$action" | jq -r '.commit_sha')
+                
+                echo "Executing: $action_type @$username (from commit ${commit_sha:0:7})"
+                
+                if [ "$action_type" = "add" ]; then
+                  echo "Adding @$username to admin-group team..."
+                  
+                  # Add user to the admin-group team
+                  response=$(gh api -X PUT "/orgs/${{ github.repository_owner }}/teams/admin-group/memberships/$username" \
+                    --header "Accept: application/vnd.github.v3+json" 2>&1)
+                  
+                  if [ $? -eq 0 ]; then
+                    echo "✅ Successfully added @$username to admin-group team"
+                  else
+                    echo "❌ Failed to add @$username to admin-group team"
+                    echo "Error: $response"
+                  fi
+                  
+                elif [ "$action_type" = "remove" ]; then
+                  echo "Removing @$username from admin-group team..."
+                  
+                  # Remove user from the admin-group team
+                  response=$(gh api -X DELETE "/orgs/${{ github.repository_owner }}/teams/admin-group/memberships/$username" \
+                    --header "Accept: application/vnd.github.v3+json" 2>&1)
+                  
+                  if [ $? -eq 0 ]; then
+                    echo "✅ Successfully removed @$username from admin-group team"
+                  else
+                    echo "❌ Failed to remove @$username from admin-group team"
+                    echo "Error: $response"
+                  fi
+                fi
+                
+                # Add a small delay between operations
+                sleep 1
+              done
+              
+              echo "All admin team changes have been processed"
+            else
+              echo "No admin team actions to execute"
+            fi
+
+        - name: Summary
+          run: |
+            echo "Admin team management workflow completed"
+            echo "Check the previous step for any admin team changes processed"

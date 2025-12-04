@@ -1,0 +1,123 @@
+name: Create Team Workflow
+on:
+  issues:
+    types: [opened, reopened]
+
+jobs:
+  manage-admin-team:
+    if: contains(github.event.issue.labels.*.name, 'create-team')
+    ### Make sure to manually create the label "create-team" in the organization
+    ### https://github.com/renan-org/.github/issues/labels
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: write
+      pull-requests: write
+    
+    steps:
+      - name: Checkout current repository (for Issue template)
+        uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }} ## You need permissions to create Teams
+
+      - name: Init gh cli
+        ## You may want to use a GH App here instead
+        run: gh auth login --with-token <<< ${{ secrets.ISSUE_OPS_TOKEN }}
+        
+      - name: Comment on Issue regarding workflow processing
+        run: |
+            gh issue comment ${{ github.event.issue.number }} --body "This issue is being processed by the Create Team workflow. Please wait for the results. <br><br> 🔗 [View workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+
+      - name: Parse issue body
+        id: parse
+        uses: stefanbuck/github-issue-parser@v3
+        with:
+          template-path: .github/ISSUE_TEMPLATE/request-team.yml
+          issue-body: "${{ github.event.issue.body }}"
+
+      - name: Save parsed output to file
+        id: gather-issue-inputs
+        run: echo '${{ steps.parse.outputs.jsonString }}' > migrate_output.json
+
+      - name: Export parsed values to environment variables
+        run: |
+          echo "TEAM_NAME=$(jq -r '.team_name' migrate_output.json | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+          echo "ACTION=$(jq -r '.action_type' migrate_output.json)" >> $GITHUB_ENV
+          echo "JUSTIFICATION=$(jq -r '.justification' migrate_output.json)" >> $GITHUB_ENV
+
+      - name: "DEBUG - Show parsed data"
+        run: |
+          echo "Team to be created: ${{ env.TEAM_NAME }}"
+          echo "Action: ${{ env.ACTION }}"
+          echo "Justification: ${{ env.JUSTIFICATION }}"
+
+      - name: Validate team name conventions
+        id: validate-team-name
+        run: |
+          TEAM_NAME="${{ env.TEAM_NAME }}"
+          echo "Validating team name: $TEAM_NAME"
+          
+          # Check if team name is empty
+          if [ -z "$TEAM_NAME" ]; then
+            echo "❌ Team name cannot be empty"
+            exit 1
+          fi
+          
+          # Check length (GitHub teams: 1-100 characters)
+          if [ ${#TEAM_NAME} -gt 100 ]; then
+            echo "❌ Team name cannot be longer than 100 characters (current: ${#TEAM_NAME})"
+            exit 1
+          fi
+          
+          # Check for invalid characters (only alphanumeric, hyphens, underscores, periods)
+          if [[ ! "$TEAM_NAME" =~ ^[a-z0-9._-]+$ ]]; then
+            echo "❌ Team name can only contain lowercase letters, numbers, hyphens (-), underscores (_), and periods (.)"
+            exit 1
+          fi
+          
+          # Check if it starts or ends with special characters
+          if [[ "$TEAM_NAME" =~ ^[._-] ]] || [[ "$TEAM_NAME" =~ [._-]$ ]]; then
+            echo "❌ Team name cannot start or end with hyphens, underscores, or periods"
+            exit 1
+          fi
+          
+          # Check for consecutive special characters
+          if [[ "$TEAM_NAME" =~ [._-]{2,} ]]; then
+            echo "❌ Team name cannot contain consecutive hyphens, underscores, or periods"
+            exit 1
+          fi
+          
+          echo "✅ Team name validation passed"
+
+      - name: Comment on Issue if team name validation fails
+        if: always() && steps.validate-team-name.outcome == 'failure'
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body "❌ The team name '${{ env.TEAM_NAME }}' does not follow GitHub naming conventions. Team names must:
+          - Be 1-100 characters long
+          - Contain only lowercase letters, numbers, hyphens (-), underscores (_), and periods (.)
+          - Not start or end with special characters
+          - Not contain consecutive special characters"
+
+      - name: Ensure team DOES NOT exist in organization
+        id: check-team-existence
+        run: |
+            gh api orgs/renan-org/teams/${{ env.TEAM_NAME }} --silent && echo "❌ Team already exists!" && exit 1 || echo "✅ Team does not exist, proceeding ..."
+
+      - name: Comment on Issue if team already exists
+        if: always() && steps.check-team-existence.outcome == 'failure'
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body "❌ The team ${{ env.TEAM_NAME }} already exists in the organization. Please choose a different name."
+
+      - name: Create team in organization
+        ## You may want to reach to your IdP here instead OR define a mechanism to assign team sync with your IdP groups
+        run: |
+            gh api orgs/renan-org/teams --method POST --field name="${{ env.TEAM_NAME }}" --field privacy="closed" && echo "🔄 Team being created ..."
+
+      - name: Comment on Issue regarding team creation
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body "✅ Team ${{ env.TEAM_NAME }} has been created successfully in the organization."
+
+      - name: Comment on Issue regarding workflow failure
+        if: failure()
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body "❌ The team ${{ env.TEAM_NAME }} could not be created. Check logs in the workflow run linked earlier."

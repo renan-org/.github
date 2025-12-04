@@ -1,23 +1,61 @@
 # Hello Developers in this Organization 👋
 
-## 🧙 What is your organization all about?
-This organization is for:
-- Trainings involving Git and GitHub
-- Testing and playing around with GitHub features.
+Welcome to our GitHub organization! This space is dedicated to sharing resources, workflows, and other tools to streamline your development processes.
 
-## Available Workflow Templates
+## ⚙️ Automation resources ⚙️
+
+### Creating a Team in this Organization 🧑‍🧑‍🧒‍🧒
+
+To create a new team within this organization, use the below button and watch the created Issue for updates.
+
+<a href="https://github.com/renan-org/.github/issues/new?template=request-team.yml">
+    <img src="https://img.shields.io/badge/Create%20a%20New%20Team-4B9CD3?style=flat-square&logo=github" alt="Create a New Team" />
+</a>
+
+### Migrate repositories to this Organization 🚀
+
+To migrate a repository to this organization, use the button below to create a new issue. Make sure to provide all the necessary details in the issue description. Make sure to have a GitHub Team created to own the migrated repository (See above automation).
+
+<a href="https://github.com/renan-org/.github/issues/new?template=request-migration.yml">
+    <img src="https://img.shields.io/badge/Migrate%20a%20Repository-4B9CD3?style=flat-square&logo=github" alt="Migrate repository" />
+</a>
+
+
+### Creating a Repository in this Organization 🤩
+
+To create a new repository within this organization, you will need to already have a Team. Use the below button to trigger a request. Mind watch the created Issue for updates.
+
+<a href="https://github.com/renan-org/.github/issues/new?template=request-repo.yml">
+    <img src="https://img.shields.io/badge/Create%20a%20New%20Repository-4B9CD3?style=flat-square&logo=github" alt="Create a New Repository" />
+</a>
+
+---------------------
+
+## 📋 Available Workflow Templates
+
+**Workflow Templates** are starter workflows that help you quickly set up GitHub Actions CI/CD pipelines for new repositories. They provide a pre-configured starting point that you can customize for your specific needs.
 
 ### Java Applications
+
 - [Java Spring Boot CI/CD Pipeline](/workflow-templates/01-template-java-app-build.yml) - Complete pipeline for containerized Spring Boot apps with Azure Container Apps deployment.
 
 ### Infrastructure as Code
+
 - [Terraform Deployment](/workflow-templates/02-template-terraform.yml) - Terraform deployment workflow with state management and Azure integration.
 
 ### Frontend Applications
+
 - [Node.js React Build](/workflow-templates/03-template-react-build.yml) - Build and deployment pipeline for React applications with Azure Static Web Apps.
 
+---------------------
+
+## 🔄 Reusable Workflows
+
+**Reusable Workflows** are shared workflow definitions that can be called from other repositories and workflows. They promote code reuse and consistency across multiple projects without duplicating workflow code.
+
 ### Security
-- [Security Scanning](/workflow-templates/04-template-security-scan.yml) - Security analysis workflow using CodeQL and dependency scanning.
+
+- [Security Scanning](https://github.com/renan-org/shared-security-scan/blob/main/.github/workflows/security-scan.yml) - Reusable security analysis workflow for automated scanning and vulnerability detection.
 
 <!--
 **Here are some ideas to get you started:**

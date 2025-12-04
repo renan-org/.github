@@ -1,0 +1,61 @@
+---
+name: Create Repo
+description: Request to create a new repository within the organization.
+title: "[REPO] Create repo"
+labels: [create-repo]
+# assignees: ["maintainer1"] ## You may want to assign maintainers to triage these requests
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Automated Repository Management
+
+        This request will be automatically processed by the [Create Repository workflow](../blob/main/.github/workflows/create-repo.yml).
+
+        The workflow will:
+        1. Validate that the repository does not exist in the organization.
+        2. Validate that the specified team exists in the organization.
+        3. Create a new repository in the organization.
+        4. Assign the specified team to the repository.
+
+        Remove functionality may be implemented.
+        
+  - type: input
+    id: repo_name
+    attributes:
+      label: Repository Name
+      description: "Enter the name of the repository to create"
+      placeholder: "e.g., my-new-repo"
+    validations:
+      required: true
+
+  - type: input
+    id: team_name
+    attributes:
+      label: Team Name
+      description: "Enter the name of the team that will own this repository (team must exist)"
+      placeholder: "e.g., my-team"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: action_type
+    attributes:
+      label: Modification/Action Type
+      description: "Select the type of modification"
+      options:
+        - add
+        - remove
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: justification
+    attributes:
+      label: Justification
+      description: "Provide a brief justification for this request"
+      placeholder: "Please explain why this repository is needed..."
+    validations:
+      required: false

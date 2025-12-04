@@ -1,0 +1,50 @@
+---
+name: Decommissioned - Change Admin Team
+description: Request to add or remove a user from the admin team.
+title: "[ADMIN] Admin team modification request"
+labels: ["admin-request"]
+assignees: ["renan-alm"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Automated Admin Team Management
+        
+        This request will be automatically processed by the [Admin Team Management workflow](../../actions/workflows/admin-team-manager.yml).
+        
+        The workflow will:
+        1. Validate that the requested user exists on GitHub
+        2. Verify the user is a member of this organization
+        3. Update the admin team list in the organization's `.github/admin-team.yml` file
+        4. Automatically close this issue with the result
+        
+  - type: input
+    id: github_handle
+    attributes:
+      label: GitHub Handle
+      description: "Enter the GitHub username (without @)"
+      placeholder: "e.g., username"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: action_type
+    attributes:
+      label: Modification/Action Type
+      description: "Select the type of modification"
+      options:
+        - add
+        - remove
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: justification
+    attributes:
+      label: Justification
+      description: "Provide a brief justification for this request"
+      placeholder: "Please explain why this admin access change is needed..."
+    validations:
+      required: false
