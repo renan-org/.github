@@ -1,0 +1,30 @@
+name: DemoWorkflow
+
+run-name: Demo Build
+
+on:
+  workflow_dispatch:
+  push:
+   pull_request:
+     branches:
+       - main
+
+concurrency:
+  group: ${{ github.workflow }}  
+  cancel-in-progress: true  # Prevent multiple workflows from running simultaneously
+
+jobs:
+    demo-workflow:
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+        
+            - name: Echo
+              runs: |
+                echo "Hello Workflow!"
+
+            - name: Workflow Summary
+              if: always()  # Always run this step, even if previous steps fail
+              run: echo '### Hello world! 🚀' >> $GITHUB_STEP_SUMMARY
