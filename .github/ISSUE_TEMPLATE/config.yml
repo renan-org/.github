@@ -2,8 +2,8 @@
 # 
 # This file MUST be located at: .github/ISSUE_TEMPLATE/config.yml
 # 
-# For organization-level configs (like this repo), the full path is:
-#   /home/runner/work/.github/.github/.github/ISSUE_TEMPLATE/config.yml
+# For organization-level configs (like this repo), the relative path is:
+#   .github/ISSUE_TEMPLATE/config.yml
 # 
 # This configures the issue template chooser for all repositories in the organization.
 # See README.md for more details about repository structure.
