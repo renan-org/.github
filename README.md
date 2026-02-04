@@ -9,15 +9,15 @@ This is an organization-level `.github` repository that provides default configu
 ### Directory Layout
 
 ```
-.github/
-├── .github/                          # Organization-level GitHub configurations
+.github/ (repository root)
+├── .github/                          # GitHub configurations for this repository
 │   ├── ISSUE_TEMPLATE/               # Issue template configurations
 │   │   ├── config.yml                # Issue template chooser configuration
 │   │   ├── admin-request.yml         # Admin request issue template
 │   │   ├── request-migration.yml     # Repository migration request template
 │   │   ├── request-repo.yml          # Repository creation request template
 │   │   └── request-team.yml          # Team creation request template
-│   ├── workflows/                    # Organization-wide workflows
+│   ├── workflows/                    # Workflows for this repository
 │   │   ├── admin-team.yml
 │   │   ├── create-repo.yml
 │   │   ├── create-team.yml
@@ -26,11 +26,13 @@ This is an organization-level `.github` repository that provides default configu
 │   │   └── migrate-repo.yml
 │   ├── copilot-instructions.md       # Copilot AI instructions
 │   └── scripts/                      # Helper scripts
-├── workflow-templates/               # Reusable workflow templates
-├── workflows/                        # Required organization workflows
-├── profile/                          # Organization profile (README)
+├── workflow-templates/               # Reusable workflow templates for other repos
+├── workflows/                        # Required organization-wide workflows
+├── profile/                          # Organization profile (public README)
 └── README.md                         # This file
 ```
+
+**Note:** This repository is named `.github`, and like any GitHub repository, it has a `.github/` directory within it for its own GitHub configurations. The nested structure is intentional and follows GitHub's standard repository layout.
 
 ### Issue Template Configuration
 
