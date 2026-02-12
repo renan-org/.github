@@ -19,6 +19,8 @@ body:
         3. Create a new repository in the organization.
         4. Assign the specified team to the repository.
 
+        You can provide either a team slug (as seen in the team URL) **or** a team name; if both are provided, the slug wins.
+
         Remove functionality may be implemented.
         
   - type: input
@@ -31,13 +33,22 @@ body:
       required: true
 
   - type: input
+    id: team_slug
+    attributes:
+      label: Team Slug (preferred)
+      description: "Slug from the team URL, e.g., https://github.com/orgs/<org>/teams/<team-slug>."
+      placeholder: "e.g., team-name-admin"
+    validations:
+      required: false
+
+  - type: input
     id: team_name
     attributes:
-      label: Team Name
-      description: "Enter the name of the team that will own this repository (team must exist)"
-      placeholder: "e.g., my-team"
+      label: Team Name (if no slug)
+      description: "If you don't know the slug, enter the display name; it will be slugified."
+      placeholder: "e.g., Team-Name ABC.admin"
     validations:
-      required: true
+      required: false
 
   - type: dropdown
     id: action_type
