@@ -2,9 +2,9 @@ name: Manage GitHub (Admin) Team
 
 on:
     workflow_dispatch:
-    push:
-        branches:
-            - main
+    # push:
+    #     branches:
+    #         - main
     
 
 jobs:
