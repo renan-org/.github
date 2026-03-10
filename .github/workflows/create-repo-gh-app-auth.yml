@@ -1,0 +1,243 @@
+name: Create Repo Workflow
+on:
+  issues:
+    types: [opened, reopened]
+
+jobs:
+  create-repo:
+    if: contains(github.event.issue.labels.*.name, 'create-repo')
+    ### Make sure to manually create the label "create-repo" in the organization
+    ### https://github.com/renan-org/.github/issues/labels
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: write
+      pull-requests: write
+    
+    steps:
+      - name: Generate GitHub App token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Checkout current repository (for Issue template)
+        uses: actions/checkout@v5
+        with:
+          token: ${{ steps.generate-token.outputs.token }}
+
+      - name: Init gh cli
+        run: gh auth login --with-token <<< ${{ steps.generate-token.outputs.token }}
+        
+      - name: Comment on Issue regarding workflow processing
+        run: |
+            gh issue comment ${{ github.event.issue.number }} --body "This issue is being processed by the Create Repository workflow. Please wait for the results. <br><br> 🔗 [View workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+
+      - name: Parse issue body
+        id: parse
+        uses: stefanbuck/github-issue-parser@v3
+        with:
+          template-path: .github/ISSUE_TEMPLATE/request-repo.yml
+          issue-body: "${{ github.event.issue.body }}"
+
+      - name: Save parsed output to file
+        id: gather-issue-inputs
+        run: echo '${{ steps.parse.outputs.jsonString }}' > migrate_output.json
+
+      - name: Export request values
+        run: |
+          TEAM_SLUG_INPUT=$(jq -r '.team_slug // ""' migrate_output.json)
+          TEAM_NAME_INPUT=$(jq -r '.team_name // ""' migrate_output.json)
+
+          echo "REPO_NAME=$(jq -r '.repo_name' migrate_output.json | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+          echo "TEAM_SLUG_INPUT=$TEAM_SLUG_INPUT" >> $GITHUB_ENV
+          echo "TEAM_NAME_INPUT=$TEAM_NAME_INPUT" >> $GITHUB_ENV
+          echo "ACTION=$(jq -r '.action_type' migrate_output.json)" >> $GITHUB_ENV
+          echo "JUSTIFICATION=$(jq -r '.justification' migrate_output.json)" >> $GITHUB_ENV
+
+      - name: Derive team slug
+        id: derive-team-slug
+        run: |
+          TEAM_SOURCE="${TEAM_SLUG_INPUT:-}"
+          if [ -z "$TEAM_SOURCE" ]; then
+            TEAM_SOURCE="${TEAM_NAME_INPUT:-}"
+          fi
+
+          TEAM_SLUG=$(printf '%s' "$TEAM_SOURCE" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//; s/-+/-/g')
+          echo "TEAM_SLUG=$TEAM_SLUG" >> $GITHUB_ENV
+
+      - name: "DEBUG - Show parsed data"
+        run: |
+          echo "Repository to be created: ${{ env.REPO_NAME }}"
+          SOURCE_LABEL="slug"
+          if [ -z "${{ env.TEAM_SLUG_INPUT }}" ] && [ -n "${{ env.TEAM_NAME_INPUT }}" ]; then
+            SOURCE_LABEL="name"
+          fi
+
+          echo "Team slug input: '${{ env.TEAM_SLUG_INPUT }}'"
+          echo "Team name input: '${{ env.TEAM_NAME_INPUT }}'"
+          echo "Team slug to be assigned: ${{ env.TEAM_SLUG }} (derived from ${SOURCE_LABEL})"
+          echo "Action: ${{ env.ACTION }}"
+          echo "Justification: ${{ env.JUSTIFICATION }}"
+
+      - name: Validate team slug is presented after normalization
+        run: |
+          if [ -z "${{ env.TEAM_SLUG }}" ]; then
+            echo "❌ Team slug cannot be empty after normalization. Provide a team slug (preferred) or a team name to slugify."
+            exit 1
+          fi
+
+      - name: Validate repository name conventions
+        id: validate-repo-name
+        run: |
+          REPO_NAME="${{ env.REPO_NAME }}"
+          echo "Validating repository name: $REPO_NAME"
+          
+          # Check if repo name is empty
+          if [ -z "$REPO_NAME" ]; then
+            echo "❌ Repository name cannot be empty"
+            exit 1
+          fi
+          
+          # Check length (GitHub repos: 1-100 characters)
+          if [ ${#REPO_NAME} -gt 100 ]; then
+            echo "❌ Repository name cannot be longer than 100 characters (current: ${#REPO_NAME})"
+            exit 1
+          fi
+          
+          # Check for invalid characters (only alphanumeric, hyphens, underscores, periods)
+          if [[ ! "$REPO_NAME" =~ ^[a-z0-9._-]+$ ]]; then
+            echo "❌ Repository name can only contain lowercase letters, numbers, hyphens (-), underscores (_), and periods (.)"
+            exit 1
+          fi
+          
+          # Check if it starts or ends with special characters
+          if [[ "$REPO_NAME" =~ ^[._-] ]] || [[ "$REPO_NAME" =~ [._-]$ ]]; then
+            echo "❌ Repository name cannot start or end with hyphens, underscores, or periods"
+            exit 1
+          fi
+          
+          # Check for consecutive special characters
+          if [[ "$REPO_NAME" =~ [._-]{2,} ]]; then
+            echo "❌ Repository name cannot contain consecutive hyphens, underscores, or periods"
+            exit 1
+          fi
+          
+          # Check for reserved names
+          if [[ "$REPO_NAME" =~ ^(git|www|ftp|mail|pop|pop3|imap|smtp|stage|stats|status|www2)$ ]]; then
+            echo "❌ Repository name cannot be a reserved word"
+            exit 1
+          fi
+          
+          echo "✅ Repository name validation passed"
+
+      ## Team name validation is currently disabled as team names can be more flexible and may not always follow strict conventions. Instead, we will check for the existence of the team in the organization and provide feedback if it does not exist.
+      # - name: Validate team name conventions
+      #   id: validate-team-name
+      #   run: |
+      #     TEAM_SLUG="${{ env.TEAM_SLUG }}"
+      #     echo "Validating team name: $TEAM_SLUG"
+          
+      #     # Check if team name is empty
+      #     if [ -z "$TEAM_SLUG" ]; then
+      #       echo "❌ Team name cannot be empty"
+      #       exit 1
+      #     fi
+          
+      #     # Check length (GitHub teams: 1-100 characters)
+      #     if [ ${#TEAM_SLUG} -gt 100 ]; then
+      #       echo "❌ Team name cannot be longer than 100 characters (current: ${#TEAM_SLUG})"
+      #       exit 1
+      #     fi
+          
+      #     # Check for invalid characters (only alphanumeric, hyphens, underscores, periods)
+      #     if [[ ! "$TEAM_SLUG" =~ ^[a-z0-9._-]+$ ]]; then
+      #       echo "❌ Team name can only contain lowercase letters, numbers, hyphens (-), underscores (_), and periods (.)"
+      #       exit 1
+      #     fi
+          
+      #     # Check if it starts or ends with special characters
+      #     if [[ "$TEAM_SLUG" =~ ^[._-] ]] || [[ "$TEAM_SLUG" =~ [._-]$ ]]; then
+      #       echo "❌ Team name cannot start or end with hyphens, underscores, or periods"
+      #       exit 1
+      #     fi
+          
+      #     # Check for consecutive special characters
+      #     if [[ "$TEAM_SLUG" =~ [._-]{2,} ]]; then
+      #       echo "❌ Team name cannot contain consecutive hyphens, underscores, or periods"
+      #       exit 1
+      #     fi
+          
+      #     echo "✅ Team name validation passed"
+
+      - name: Comment on Issue if repository name validation fails
+        if: always() && steps.validate-repo-name.outcome == 'failure'
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body "❌ The repository name '${{ env.REPO_NAME }}' does not follow GitHub naming conventions. Repository names must:
+          - Be 1-100 characters long
+          - Contain only lowercase letters, numbers, hyphens (-), underscores (_), and periods (.)
+          - Not start or end with special characters
+          - Not contain consecutive special characters
+          - Not be a reserved word (git, www, ftp, mail, pop, pop3, imap, smtp, stage, stats, status, www2)"
+
+      ## Feedback on team name validation is currently disabled to avoid confusion, as team names can be more flexible and may not always follow strict conventions. Instead, we will check for the existence of the team in the organization and provide feedback if it does not exist.
+      # - name: Comment on Issue if team name validation fails
+      #   if: always() && steps.validate-team-name.outcome == 'failure'
+      #   run: |
+      #     gh issue comment ${{ github.event.issue.number }} --body "❌ The team name '${{ env.TEAM_SLUG }}' does not follow GitHub naming conventions. Team names must:
+      #     - Be 1-100 characters long
+      #     - Contain only lowercase letters, numbers, hyphens (-), underscores (_), and periods (.)
+      #     - Not start or end with special characters
+      #     - Not contain consecutive special characters"
+
+      - name: Ensure repository DOES NOT exist in organization
+        id: check-repo-existence
+        if: ${{ env.ACTION == 'add' }}
+        run: |
+            gh api repos/renan-org/${{ env.REPO_NAME }} --silent && echo "❌ Repository already exists!" && exit 1 || echo "✅ Repository does not exist, proceeding ..."
+
+      - name: Comment on Issue if repository already exists
+        if: always() && steps.check-repo-existence.outcome == 'failure'
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body "❌ The repository ${{ env.REPO_NAME }} already exists in the organization. Please choose a different name."
+
+      - name: Ensure team EXISTS in organization
+        id: check-team-existence
+        if: ${{ env.ACTION == 'add' }}
+        run: |
+            gh api \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              orgs/renan-org/teams/${{ env.TEAM_SLUG }} --silent && echo "✅ Team exists, proceeding ..." || (echo "❌ Team does not exist!" && exit 1)
+
+      - name: Comment on Issue if team does not exist
+        if: always() && steps.check-team-existence.outcome == 'failure'
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body "❌ The team slug '${{ env.TEAM_SLUG }}' does not exist in the organization. Please create the team first or use an existing team."
+
+      - name: Create repository in organization
+        if: ${{ env.ACTION == 'add' }}
+        run: |
+            gh api orgs/renan-org/repos --method POST --field name="${{ env.REPO_NAME }}" --field private=true && echo "🔄 Repository being created ..."
+
+      - name: Assign team to repository
+        if: ${{ env.ACTION == 'add' }}
+        run: |
+            gh api orgs/renan-org/teams/${{ env.TEAM_SLUG }}/repos/renan-org/${{ env.REPO_NAME }} --method PUT --field permission="maintain" && echo "🔄 Team being assigned to repository ..."
+
+      - name: Comment on Issue regarding repository creation
+        if: ${{ env.ACTION == 'add' }}
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body "✅ Repository ${{ env.REPO_NAME }} has been created successfully in the organization and assigned to team ${{ env.TEAM_SLUG }}."
+
+      - name: Handle repository removal (not implemented)
+        if: ${{ env.ACTION == 'remove' }}
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body "❌ Repository removal is not currently implemented for safety reasons. Please contact an administrator if you need to remove the repository ${{ env.REPO_NAME }}."
+
+      - name: Comment on Issue regarding workflow failure
+        if: failure()
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body "❌ The repository ${{ env.REPO_NAME }} could not be created. Check logs in the workflow run linked earlier."
