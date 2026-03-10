@@ -5,7 +5,7 @@ on:
 
 jobs:
   create-repo:
-    if: contains(github.event.issue.labels.*.name, 'create-repo')
+    if: contains(github.event.issue.labels.*.name, 'create-repo-via-app')
     ### Make sure to manually create the label "create-repo" in the organization
     ### https://github.com/renan-org/.github/issues/labels
     runs-on: ubuntu-latest
